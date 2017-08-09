@@ -1,6 +1,5 @@
 <?php
 namespace Oara\Network\Publisher;
-
     /**
      * The goal of the Open Affiliate Report Aggregator (OARA) is to develop a set
      * of PHP classes that can download affiliate reports from a number of affiliate networks, and store the data in a common format.
@@ -29,7 +28,7 @@ namespace Oara\Network\Publisher;
  * @version    Release: 01.00
  *
  */
-class Effiliation extends \Oara\Network
+class ThreeSixtyTracking extends \Oara\Network
 {
 
     private $_credentials = null;
@@ -39,7 +38,9 @@ class Effiliation extends \Oara\Network
      */
     public function login($credentials)
     {
+
         $this->_credentials = $credentials;
+
     }
 
     /**
@@ -65,7 +66,7 @@ class Effiliation extends \Oara\Network
     {
         $connection = false;
 
-        $content = \file_get_contents('http://api.effiliation.com/apiv2/transaction.csv?key=' . $this->_credentials["apipassword"]);
+        $content = \file_get_contents('http://apiv2.360tracking.fr/apiv2/transaction.csv?key=' . $this->_credentials["apipassword"]);
         if (!\preg_match("/bad credentials !/", $content, $matches)) {
             $connection = true;
         }
@@ -78,7 +79,7 @@ class Effiliation extends \Oara\Network
     public function getMerchantList()
     {
         $merchants = array();
-        $url = 'http://api.effiliation.com/apiv2/programs.xml?key=' . $this->_credentials["apipassword"] . "&filter=active";
+        $url = 'http://apiv2.360tracking.fr/apiv2/programs.xml?key=' . $this->_credentials["apipassword"] . "&filter=active";
         $content = @\file_get_contents($url);
         $xml = \simplexml_load_string($content, null, LIBXML_NOERROR | LIBXML_NOWARNING);
         foreach ($xml->program as $merchant) {
@@ -96,7 +97,6 @@ class Effiliation extends \Oara\Network
      * @param \DateTime|null $dStartDate
      * @param \DateTime|null $dEndDate
      * @return array
-     * @throws \Exception
      */
     public function getTransactionList($merchantList = null, \DateTime $dStartDate = null, \DateTime $dEndDate = null)
     {
@@ -104,36 +104,35 @@ class Effiliation extends \Oara\Network
 
         $merchantIdList = \Oara\Utilities::getMerchantIdMapFromMerchantList($merchantList);
 
-        $url = 'http://api.effiliation.com/apiv2/transaction.csv?key=' . $this->_credentials["apipassword"] . '&start=' . $dStartDate->format("d/m/Y") . '&end=' . $dEndDate->format("d/m/Y") . '&type=date';
+        $url = 'http://apiv2.360tracking.fr/apiv2/transaction.csv?key=' . $this->_credentials["apipassword"] . '&start=' . $dStartDate->format("d/m/Y") . '&end=' . $dEndDate->format("d/m/Y") . '&type=date';
         $content = \utf8_encode(\file_get_contents($url));
         $exportData = \str_getcsv($content, "\n");
         $num = \count($exportData);
         for ($i = 1; $i < $num; $i++) {
             $transactionExportArray = \str_getcsv($exportData[$i], "|");
             if (isset($merchantIdList[(int)$transactionExportArray[2]])) {
-                $transaction = array();
+
+                $transaction = Array();
                 $merchantId = (int)$transactionExportArray[2];
                 $transaction['merchantId'] = $merchantId;
                 $transaction['date'] = $transactionExportArray[10];
                 $transaction['unique_id'] = $transactionExportArray[0];
 
-                if ($transactionExportArray[4] != null) {
-                    $transaction['custom_id'] = $transactionExportArray[4];
+                if ($transactionExportArray[15] != null) {
+                    $transaction['custom_id'] = $transactionExportArray[15];
                 }
 
                 if ($transactionExportArray[9] == 'Valide') {
                     $transaction['status'] = \Oara\Utilities::STATUS_CONFIRMED;
-                } else {
+                } else
                     if ($transactionExportArray[9] == 'Attente') {
                         $transaction['status'] = \Oara\Utilities::STATUS_PENDING;
-                    } else {
+                    } else
                         if ($transactionExportArray[9] == 'Refusé' || $transactionExportArray[9] == 'Refuse') {
                             $transaction['status'] = \Oara\Utilities::STATUS_DECLINED;
                         } else {
                             throw new \Exception("New status {$transactionExportArray[9]}");
                         }
-                    }
-                }
 
                 $transaction['amount'] = \Oara\Utilities::parseDouble($transactionExportArray[7]);
                 $transaction['commission'] = \Oara\Utilities::parseDouble($transactionExportArray[8]);
@@ -142,4 +141,5 @@ class Effiliation extends \Oara\Network
         }
         return $totalTransactions;
     }
+
 }

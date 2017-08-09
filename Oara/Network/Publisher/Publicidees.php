@@ -1,24 +1,24 @@
 <?php
 namespace Oara\Network\Publisher;
-    /**
-     * The goal of the Open Affiliate Report Aggregator (OARA) is to develop a set
-     * of PHP classes that can download affiliate reports from a number of affiliate networks, and store the data in a common format.
-     *
-     * Copyright (C) 2016  Fubra Limited
-     * This program is free software: you can redistribute it and/or modify
-     * it under the terms of the GNU Affero General Public License as published by
-     * the Free Software Foundation, either version 3 of the License, or any later version.
-     * This program is distributed in the hope that it will be useful,
-     * but WITHOUT ANY WARRANTY; without even the implied warranty of
-     * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-     * GNU Affero General Public License for more details.
-     * You should have received a copy of the GNU Affero General Public License
-     * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-     *
-     * Contact
-     * ------------
-     * Fubra Limited <support@fubra.com> , +44 (0)1252 367 200
-     **/
+/**
+ * The goal of the Open Affiliate Report Aggregator (OARA) is to develop a set
+ * of PHP classes that can download affiliate reports from a number of affiliate networks, and store the data in a common format.
+ *
+ * Copyright (C) 2016  Fubra Limited
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Contact
+ * ------------
+ * Fubra Limited <support@fubra.com> , +44 (0)1252 367 200
+ **/
 
 /**
  * API Class
@@ -43,7 +43,7 @@ class Publicidees extends \Oara\Network
         $user = $credentials['user'];
         $password = $credentials['password'];
         $this->_client = new \Oara\Curl\Access($credentials);
-        $loginUrl = 'http://performance.timeonegroup.com/logmein.php';
+        $loginUrl = 'https://performance.timeonegroup.com/logmein.php';
         $valuesLogin = array(new \Oara\Curl\Parameter('loginAff', $user),
             new \Oara\Curl\Parameter('passAff', $password),
             new \Oara\Curl\Parameter('userType', 'aff'),
@@ -188,6 +188,10 @@ class Publicidees extends \Oara\Network
                 }
             }
         }
+        $merchant = array();
+        $merchant['cid'] = 1;
+        $merchant['name'] = "Publicidees";
+        $merchants[] = $merchant;
 
         return $merchants;
     }
@@ -201,7 +205,8 @@ class Publicidees extends \Oara\Network
     public function getTransactionList($merchantList = null, \DateTime $dStartDate = null, \DateTime $dEndDate = null)
     {
         $totalTransactions = array();
-
+        $dStartDate = new \DateTime("2017-02-01");
+        $dEndDate = new \DateTime("2017-02-07");
         foreach ($this->_sites as $siteId => $siteName) {
 
             // Reconnect with the actual site
@@ -224,15 +229,19 @@ class Publicidees extends \Oara\Network
                 $valuesFromExport[] = new \Oara\Curl\Parameter('currency', "GBP");
                 $valuesFromExport[] = new \Oara\Curl\Parameter('expAct', "1");
                 $valuesFromExport[] = new \Oara\Curl\Parameter('tabid', "0");
-                $valuesFromExport[] = new \Oara\Curl\Parameter('partid', $siteId);
+                //$valuesFromExport[] = new \Oara\Curl\Parameter('partid', $siteId);
                 $valuesFromExport[] = new \Oara\Curl\Parameter('Submit', "Voir");
+                $valuesFromExport[] = new \Oara\Curl\Parameter('periode', 0);
+                $valuesFromExport[] = new \Oara\Curl\Parameter('monthDisplay', 0);
+                $valuesFromExport[] = new \Oara\Curl\Parameter('tout', 1);
+
                 $urls[] = new \Oara\Curl\Request('http://publisher.publicideas.com/index.php?', $valuesFromExport);
                 $dStartDateAux->add(new \DateInterval('P1D'));
             }
 
             try {
 
-                $exportReportList = $this->_client->get($urls, 0 , true);
+                $exportReportList = $this->_client->get($urls, 0, true);
                 foreach ($exportReportList as $exportReport) {
                     $exportData = \str_getcsv(\utf8_decode($exportReport), "\n");
                     $num = \count($exportData);
@@ -252,8 +261,7 @@ class Publicidees extends \Oara\Network
 
                         for ($j = 1; $j < $num; $j++) {
                             $transactionExportArray = \str_getcsv($exportData[$j], ";");
-                            if (isset($headerMap["Ventes"]) && isset($headerMap["pendingVentes"])
-                                && isset($headerMap["Programme"]) && isset($headerMap["CA"]) && isset($headerMap["pendingCA"])
+                            if (isset($headerMap["Ventes"]) && isset($headerMap["pendingVentes"]) && isset($headerMap["CA"]) && isset($headerMap["pendingCA"])
                             ) {
                                 $confirmedTransactions = (int)$transactionExportArray[$headerMap["Ventes"]];
                                 $pendingTransactions = (int)$transactionExportArray[$headerMap["pendingVentes"]];
@@ -282,17 +290,7 @@ class Publicidees extends \Oara\Network
 
                                 for ($z = 0; $z < $pendingTransactions; $z++) {
                                     $transaction = Array();
-                                    $merchantFound = false;
-                                    foreach ($merchantList as $merchant) {
-                                        if ($merchant['name'] == $transactionExportArray[$headerMap["Programme"]]) {
-                                            $transaction['merchantId'] = $merchant['id'];
-                                            $merchantFound = true;
-                                            break;
-                                        }
-                                    }
-                                    if (!$merchantFound) {
-                                        throw new \Exception('Merchant not found');
-                                    }
+                                    $transaction['merchantId'] = 1;
                                     $transaction['date'] = $dStartDateAux->format("Y-m-d H:i:s");
                                     $stringAmountValue = str_replace(',', '.', $transactionExportArray[$headerMap["pendingCA"]]);
                                     $transaction['amount'] = \Oara\Utilities::parseDouble(floatval($stringAmountValue) / $pendingTransactions);
@@ -307,8 +305,6 @@ class Publicidees extends \Oara\Network
             } catch (\Exception $e) {
 
             }
-
-
         }
 
         return $totalTransactions;

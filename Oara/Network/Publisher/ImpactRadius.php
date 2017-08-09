@@ -29,7 +29,7 @@ namespace Oara\Network\Publisher;
  * @version    Release: 01.00
  *
  */
-class Smg extends \Oara\Network
+class ImpactRadius extends \Oara\Network
 {
     private $_credentials = null;
     private $_accounts = null;
@@ -74,8 +74,8 @@ class Smg extends \Oara\Network
                 $urls = array();
                 $urls[] = new \Oara\Curl\Request('https://member.impactradius.co.uk/secure/mediapartner/accountSettings/mp-wsapi-flow.ihtml?', array());
                 $exportReport = $this->_client->get($urls);
-                $dom = new \Zend_Dom_Query($exportReport[0]);
-                $results = $dom->query('div .uitkFields');
+                $dom = new \Zend\Dom\Query($exportReport[0]);
+                $results = $dom->execute('div .uitkFields');
                 $count = \count($results);
                 if ($count == 0) {
 
@@ -87,8 +87,8 @@ class Smg extends \Oara\Network
                     $urls = array();
                     $urls[] = new \Oara\Curl\Request('https://member.impactradius.co.uk/secure/mediapartner/accountSettings/mp-wsapi-flow.ihtml?', array());
                     $exportReport = $this->_client->get($urls);
-                    $dom = new \Zend_Dom_Query($exportReport[0]);
-                    $results = $dom->query('div .uitkFields');
+                    $dom = new \Zend\Dom\Query($exportReport[0]);
+                    $results = $dom->execute('div .uitkFields');
                     $count = \count($results); // get number of matches: 4
                     if ($count == 0) {
                         throw new \Exception ("No API credentials");
@@ -154,7 +154,7 @@ class Smg extends \Oara\Network
         foreach ($this->_accounts as $account) {
             //Checking API connection from Impact Radius
             $uri = "https://" . $account['accountSid'] . ":" . $account['authToken'] . "@api.impactradius.com/2010-09-01/Mediapartners/" . $account['accountSid'] . "/Campaigns.xml";
-            $res = \simplexml_load_file($uri);
+            $res = \simplexml_load_string(self::call($uri));
             if (!isset($res->Campaigns)) {
                 $newApi = false;
                 break;
@@ -193,7 +193,7 @@ class Smg extends \Oara\Network
     {
         foreach ($this->_accounts as $account) {
             $uri = "https://" . $account['accountSid'] . ":" . $account['authToken'] . "@api.impactradius.com/2010-09-01/Mediapartners/" . $account['accountSid'] . "/Campaigns.xml";
-            $res = \simplexml_load_file($uri);
+            $res = \simplexml_load_string(self::call($uri));
             $currentPage = (int)$res->Campaigns->attributes()->page;
             $pageNumber = (int)$res->Campaigns->attributes()->numpages;
             while ($currentPage <= $pageNumber) {
@@ -207,7 +207,7 @@ class Smg extends \Oara\Network
                 $currentPage++;
                 $nextPageUri = (string)$res->Campaigns->attributes()->nextpageuri;
                 if ($nextPageUri != null) {
-                    $res = \simplexml_load_file("https://" . $account['accountSid'] . ":" . $account['authToken'] . "@api.impactradius.com" . $nextPageUri);
+                    $res = \simplexml_load_string(self::call("https://" . $account['accountSid'] . ":" . $account['authToken'] . "@api.impactradius.com" . $nextPageUri));
                 }
             }
         }
@@ -228,7 +228,7 @@ class Smg extends \Oara\Network
 
             //New Interface
             $uri = "https://" . $account['accountSid'] . ":" . $account['authToken'] . "@api.impactradius.com/2010-09-01/Mediapartners/" . $account['accountSid'] . "/Actions?ActionDateStart=" . $dStartDate->format('Y-m-d\TH:i:s') . "-00:00&ActionDateEnd=" . $dEndDate->format('Y-m-d\TH:i:s') . "-00:00";
-            $res = \simplexml_load_file($uri);
+            $res = \simplexml_load_string(self::call($uri));
             if ($res) {
 
                 $currentPage = (int)$res->Actions->attributes()->page;
@@ -269,7 +269,7 @@ class Smg extends \Oara\Network
                     $currentPage++;
                     $nextPageUri = (string)$res->Actions->attributes()->nextpageuri;
                     if ($nextPageUri != null) {
-                        $res = \simplexml_load_file("https://" . $account['accountSid'] . ":" . $account['authToken'] . "@api.impactradius.com" . $nextPageUri);
+                        $res = \simplexml_load_string(self::call("https://" . $account['accountSid'] . ":" . $account['authToken'] . "@api.impactradius.com" . $nextPageUri));
                     }
                 }
             }
@@ -304,6 +304,28 @@ class Smg extends \Oara\Network
             $paymentHistory[] = $obj;
         }
         return $paymentHistory;
+    }
+
+
+    /**
+     * @param $apiUrl
+     * @return mixed
+     */
+    private function call($apiUrl)
+    {
+        // Initiate the REST call via curl
+        $ch = \curl_init($apiUrl);
+        // Set the HTTP method to GET
+        \curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
+        // Don't return headers
+        \curl_setopt($ch, CURLOPT_HEADER, false);
+        // Return data after call is made
+        \curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        // Execute the REST call
+        $response = \curl_exec($ch);
+        // Close the connection
+        \curl_close($ch);
+        return $response;
     }
 
 }
