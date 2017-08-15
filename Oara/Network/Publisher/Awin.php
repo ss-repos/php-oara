@@ -289,9 +289,9 @@ class Awin extends \Oara\Network
 								$transaction['date'] = $date->format("Y-m-d H:i:s");
 
 								if (isset($transactionObject["clickRefs"])) {
-									if (isset($transactionObject["clickRefs"]["clickRef"])) {
+									if (!empty($transactionObject["clickRefs"]["clickRef"])) {
 									$transaction['custom_id'] = $transactionObject["clickRefs"]["clickRef"];
-									} else if (isset($transactionObject["clickRefs"]["clickRef2"])) {  // fallback for clickRef2 if clickRef is empty
+									} else if (!empty($transactionObject["clickRefs"]["clickRef2"])) {  // fallback for clickRef2 if clickRef is empty
 										$transaction['custom_id'] = $transactionObject["clickRefs"]["clickRef2"];
 									}
 								}
