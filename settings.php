@@ -21,14 +21,22 @@
 // Use composer autoload to load OARA classes as well as Zend Framework (dependency)
 require_once 'vendor/autoload.php';
 
+$define = function ($constantName, $constantValue, $case = false) {
+	if (!defined($constantName)) {
+		return define($constantName, $constantValue, $case);
+	}
+
+	return false;
+};
+
 //Upgrade the memory limit
 ini_set('memory_limit', '256M');
 // Error handle configuration
 error_reporting(E_ALL | E_STRICT);
 //Defining the Global variables 
-define('BI_PATH_BASE', rtrim(realpath(dirname(__FILE__)), DIRECTORY_SEPARATOR));
-define('DS', DIRECTORY_SEPARATOR);
-define('COOKIES_BASE_DIR', realpath ( dirname ( __FILE__ ) ) . DIRECTORY_SEPARATOR."Oara".DIRECTORY_SEPARATOR."data".DIRECTORY_SEPARATOR."curl");
+$define('BI_PATH_BASE', rtrim(realpath(dirname(__FILE__)), DIRECTORY_SEPARATOR));
+$define('DS', DIRECTORY_SEPARATOR);
+$define('COOKIES_BASE_DIR', realpath ( dirname ( __FILE__ ) ) . DIRECTORY_SEPARATOR."Oara".DIRECTORY_SEPARATOR."data".DIRECTORY_SEPARATOR."curl");
 
 //set up default timezone
 date_default_timezone_set('GMT');
