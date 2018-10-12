@@ -47,6 +47,9 @@ class Bol extends \Oara\Network
 		$urls[] = new \Oara\Curl\Request('https://login.bol.com/login?client_id=apm', []);
 		$login_page = $this->_client->get($urls);
 
+		if(strpos($login_page[0], 'g-recaptcha') !== false) {
+			throw new \Exception ('Bol login requires ReCAPTCHA');
+		}
 		// If we have found a token, continue with the login
 		if (\preg_match('#name="csrftoken"(\s*)value="(.*?)"#mi', $login_page[0], $matches) && !empty($matches[2])) {
 
