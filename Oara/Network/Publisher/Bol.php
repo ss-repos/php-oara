@@ -44,8 +44,10 @@ class Bol extends \Oara\Network
 
 		// Bol uses a reCAPTCHA for international IPs, we proxy through a digitalocean VM in AMS
 		$curl_options = $this->_client->getOptions();
-		$curl_options[CURLOPT_PROXY] = '188.226.151.7:3128';
-		$curl_options[CURLOPT_PROXYUSERPWD] = 'squidproxy:proxy071!';
+
+		$curl_options[CURLOPT_PROXY] = $credentials['proxy'];
+		$curl_options[CURLOPT_PROXYUSERPWD] = $credentials['proxyuserpwd'];
+
 		$this->_client->setOptions($curl_options);
 
 		// Go get the csrf token from the login page
@@ -118,6 +120,18 @@ class Bol extends \Oara\Network
 		$parameter["required"] = true;
 		$parameter["name"] = "Password";
 		$credentials["password"] = $parameter;
+
+		$parameter = array();
+		$parameter["description"] = "Proxy to connect";
+		$parameter["required"] = true;
+		$parameter["name"] = "Proxy";
+		$credentials["proxy"] = $parameter;
+
+		$parameter = array();
+		$parameter["description"] = "Proxy user/pw";
+		$parameter["required"] = true;
+		$parameter["name"] = "Proxyuser";
+		$credentials["proxyuserpwd"] = $parameter;
 
 		return $credentials;
 	}
