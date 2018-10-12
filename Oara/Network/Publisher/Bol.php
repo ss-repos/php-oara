@@ -42,6 +42,12 @@ class Bol extends \Oara\Network
 
 		$this->_client = new \Oara\Curl\Access($credentials);
 
+		// Bol uses a reCAPTCHA for international IPs, we proxy through a digitalocean VM in AMS
+		$curl_options = $this->_client->getOptions();
+		$curl_options[CURLOPT_PROXY] = '188.226.151.7:3128';
+		$curl_options[CURLOPT_PROXYUSERPWD] = 'squidproxy:proxy071!';
+		$this->_client->setOptions($curl_options);
+
 		// Go get the csrf token from the login page
 		$urls = array();
 		$urls[] = new \Oara\Curl\Request('https://login.bol.com/login?client_id=apm', []);
