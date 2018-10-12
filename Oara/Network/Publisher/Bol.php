@@ -25,7 +25,7 @@ namespace Oara\Network\Publisher;
  * @author     Carlos Morillo Merino
  * @category   Bol
  * @copyright  Fubra Limited
- * @version    Release: 01.00
+ * @version    Release: 01.01
  *
  */
 class Bol extends \Oara\Network
