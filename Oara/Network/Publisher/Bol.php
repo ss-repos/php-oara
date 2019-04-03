@@ -96,7 +96,7 @@ class Bol extends \Oara\Network
 		$urls[] = new \Oara\Curl\Request('https://partner.bol.com/partner/index.do?', array());
 		$exportReport = $this->_client->get($urls);
 
-		if (\preg_match('/partner\/logout\.do/', $exportReport[0], $match)) {
+		if (\preg_match('/account\/uitloggen/', $exportReport[0], $match)) {
 			$connection = true;
 		}
 		return $connection;
