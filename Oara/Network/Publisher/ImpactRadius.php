@@ -187,8 +187,8 @@ class ImpactRadius extends \Oara\Network
 								$transaction['status'] = \Oara\Utilities::STATUS_PENDING;
 							}
 
-						$transaction['amount'] = (double)$action->Amount;
-						$transaction['commission'] = (double)$action->Payout;
+						$transaction['amount'] = $this->normalizeDecimal($action->Amount);
+						$transaction['commission'] = $this->normalizeDecimal($action->Payout);
 						$totalTransactions[] = $transaction;
 					}
 
@@ -254,4 +254,14 @@ class ImpactRadius extends \Oara\Network
 		return $response;
 	}
 
+	private function normalizeDecimal($val, $precision = 2) {
+		$input = str_replace(' ', '', $val);
+		$number = str_replace(',', '.', $input);
+		if (strpos($number, '.')) {
+			$groups = explode('.', str_replace(',', '.', $number));
+			$lastGroup = array_pop($groups);
+			$number = implode('', $groups) . '.' . $lastGroup;
+		}
+		return round($number, $precision);
+	}
 }
