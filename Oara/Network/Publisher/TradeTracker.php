@@ -39,9 +39,12 @@ class TradeTracker extends \Oara\Network
 
         $wsdlUrl = 'http://ws.tradetracker.com/soap/affiliate?wsdl';
         //Setting the client.
-        $this->_apiClient = new \SoapClient($wsdlUrl, array('encoding' => 'UTF-8',
+        $this->_apiClient = new \SoapClient($wsdlUrl, array(
+        	'encoding' => 'UTF-8',
             'compression' => SOAP_COMPRESSION_ACCEPT | SOAP_COMPRESSION_GZIP | SOAP_COMPRESSION_DEFLATE,
-            'soap_version' => SOAP_1_1));
+            'soap_version' => SOAP_1_1,
+			'keep_alive' => false
+		));
 
         $this->_apiClient->authenticate($user, $password, false, 'en_GB');
     }
