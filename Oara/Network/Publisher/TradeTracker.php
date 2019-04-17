@@ -141,13 +141,13 @@ class TradeTracker extends \Oara\Network
                         $object['custom_id'] = $transaction->reference;
                     }
 
-                    if ($transaction->transactionStatus == 'confirmed') {
+                    if ($transaction->transactionStatus == 'confirmed' || $transaction->transactionStatus == 'accepted') {
                         $object['status'] = \Oara\Utilities::STATUS_CONFIRMED;
                     } else
                         if ($transaction->transactionStatus == 'pending') {
                             $object['status'] = \Oara\Utilities::STATUS_PENDING;
                         } else
-                            if ($transaction->transactionStatus == 'declined') {
+                            if ($transaction->transactionStatus == 'declined' || $transaction->transactionStatus == 'rejected') {
                                 $object['status'] = \Oara\Utilities::STATUS_DECLINED;
                             }
 
