@@ -1,58 +1,44 @@
 <?php
 namespace Oara\Network\Publisher;
-/**
- * The goal of the Open Affiliate Report Aggregator (OARA) is to develop a set
- * of PHP classes that can download affiliate reports from a number of affiliate networks, and store the data in a common format.
- *
- * Copyright (C) 2016  Fubra Limited
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or any later version.
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Contact
- * ------------
- * Fubra Limited <support@fubra.com> , +44 (0)1252 367 200
- **/
-/**
- * Export Class
- *
- * @author     Carlos Morillo Merino
- * @category   Bol
- * @copyright  Fubra Limited
- * @version    Release: 01.01
- *
- */
+
 class Bol extends \Oara\Network
 {
 
-	private $_client = null;
+	private $_client, $web_proxy_url, $web_proxy_auth = null;
 
 	/**
 	 * @param $credentials
 	 */
-	public function login($credentials)
-	{
-
+	public function login($credentials)	{
 
 		$this->_client = new \Oara\Curl\Access($credentials);
 
-		// Bol uses a reCAPTCHA for international IPs, we proxy through a digitalocean VM in AMS
+		$login_get_url = 'https://login.bol.com/login?client_id=apm';
+
 		$curl_options = $this->_client->getOptions();
 
-		$curl_options[CURLOPT_PROXY] = $credentials['proxy'];
-		$curl_options[CURLOPT_PROXYUSERPWD] = $credentials['proxyuserpwd'];
+		if (!empty($credentials['proxy'])) { // Use IP proxy
+			$curl_options[CURLOPT_PROXY] = $credentials['proxy'];
+			$curl_options[CURLOPT_PROXYUSERPWD] = $credentials['proxyuserpwd'];
+			$url = $login_get_url;
+		} else if (!empty($credentials['web_proxy'])) { // Use a web proxy instead of IP proxy
+
+			$this->web_proxy_url = $credentials['web_proxy'];
+			$this->web_proxy_auth = $credentials['web_proxy_auth'];
+
+			$curl_options[CURLOPT_HTTPHEADER] = [
+				'Proxy-Auth: ' . $this->web_proxy_auth,
+				'Proxy-Target-URL: '. $login_get_url,
+			];
+
+			$url = $this->web_proxy_url;
+		}
 
 		$this->_client->setOptions($curl_options);
 
 		// Go get the csrf token from the login page
 		$urls = array();
-		$urls[] = new \Oara\Curl\Request('https://login.bol.com/login?client_id=apm', []);
+		$urls[] = new \Oara\Curl\Request($url, []);
 		$login_page = $this->_client->get($urls);
 
 		if(strpos($login_page[0], 'g-recaptcha') !== false) {
@@ -63,18 +49,29 @@ class Bol extends \Oara\Network
 
 			$csrf_token = $matches[2];
 
-			$user = $credentials['user'];
-			$password = $credentials['password'];
-
 			$valuesLogin = array(
-				new \Oara\Curl\Parameter('j_username', $user),
-				new \Oara\Curl\Parameter('j_password', $password),
+				new \Oara\Curl\Parameter('j_username', $credentials['user']),
+				new \Oara\Curl\Parameter('j_password', $credentials['password']),
 				new \Oara\Curl\Parameter('csrftoken', $csrf_token),
 			);
 
-			$loginUrl = 'https://login.bol.com/j_spring_security_check';
+
+			$login_post_url = 'https://login.bol.com/j_spring_security_check';
+
+			if (empty($this->web_proxy_url)) {
+				$url = $login_post_url;
+			} else {
+				$curl_options = $this->_client->getOptions();
+				$curl_options[CURLOPT_HTTPHEADER] = [
+					'Proxy-Auth: ' . $this->web_proxy_auth,
+					'Proxy-Target-URL: '. $login_post_url,
+				];
+				$this->_client->setOptions($curl_options);
+				$url = $this->web_proxy_url;
+			}
+
 			$urls = array();
-			$urls[] = new \Oara\Curl\Request($loginUrl, $valuesLogin);
+			$urls[] = new \Oara\Curl\Request($url, $valuesLogin);
 
 			$this->_client->post($urls);
 
@@ -92,8 +89,25 @@ class Bol extends \Oara\Network
 	{
 		//If not login properly the construct launch an exception
 		$connection = false;
+
+		$connection_check_url = 'https://partner.bol.com/partner/index.do';
+
+		if (empty($this->web_proxy_url)) {
+			$url = $connection_check_url;
+		} else {
+			$curl_options = $this->_client->getOptions();
+			$curl_options[CURLOPT_HTTPHEADER] = [
+				'Proxy-Auth: ' . $this->web_proxy_auth,
+				'Proxy-Target-URL: '. $connection_check_url,
+			];
+			$this->_client->setOptions($curl_options);
+			$url = $this->web_proxy_url;
+		}
+
+
 		$urls = array();
-		$urls[] = new \Oara\Curl\Request('https://partner.bol.com/partner/index.do?', array());
+		$urls[] = new \Oara\Curl\Request($url, []);
+
 		$exportReport = $this->_client->get($urls);
 
 		if (\preg_match('/account\/uitloggen/', $exportReport[0], $match)) {
@@ -162,16 +176,44 @@ class Bol extends \Oara\Network
 		$folder = \realpath(\dirname(COOKIES_BASE_DIR)) . '/pdf/';
 		$totalTransactions = array();
 		$valuesFromExport = array();
-		$valuesFromExport[] = new \Oara\Curl\Parameter('id', "-1");
-		$valuesFromExport[] = new \Oara\Curl\Parameter('yearStart', $dStartDate->format("Y"));
-		$valuesFromExport[] = new \Oara\Curl\Parameter('monthStart', $dStartDate->format("m"));
-		$valuesFromExport[] = new \Oara\Curl\Parameter('dayStart', $dStartDate->format("d"));
-		$valuesFromExport[] = new \Oara\Curl\Parameter('yearEnd', $dEndDate->format("Y"));
-		$valuesFromExport[] = new \Oara\Curl\Parameter('monthEnd', $dEndDate->format("m"));
-		$valuesFromExport[] = new \Oara\Curl\Parameter('dayEnd', $dEndDate->format("d"));
+
+		$report_url = 'https://partner.bol.com/partner/s/excelReport/orders';
+
+		if (empty($this->web_proxy_url)) {
+			$url = $report_url;
+
+			$valuesFromExport[] = new \Oara\Curl\Parameter('id', "-1");
+			$valuesFromExport[] = new \Oara\Curl\Parameter('yearStart', $dStartDate->format("Y"));
+			$valuesFromExport[] = new \Oara\Curl\Parameter('monthStart', $dStartDate->format("m"));
+			$valuesFromExport[] = new \Oara\Curl\Parameter('dayStart', $dStartDate->format("d"));
+			$valuesFromExport[] = new \Oara\Curl\Parameter('yearEnd', $dEndDate->format("Y"));
+			$valuesFromExport[] = new \Oara\Curl\Parameter('monthEnd', $dEndDate->format("m"));
+			$valuesFromExport[] = new \Oara\Curl\Parameter('dayEnd', $dEndDate->format("d"));
+
+		} else {
+
+			$valuesFromExport['id'] = "-1";
+			$valuesFromExport['yearStart'] = $dStartDate->format("Y");
+			$valuesFromExport['monthStart'] = $dStartDate->format("m");
+			$valuesFromExport['dayStart'] = $dStartDate->format("d");
+			$valuesFromExport['yearEnd'] = $dEndDate->format("Y");
+			$valuesFromExport['monthEnd'] = $dEndDate->format("m");
+			$valuesFromExport['dayEnd'] = $dEndDate->format("d");
+
+			$curl_options = $this->_client->getOptions();
+			$curl_options[CURLOPT_HTTPHEADER] = [
+				'Proxy-Auth: ' . $this->web_proxy_auth,
+				'Proxy-Target-URL: '. $report_url . '?' . http_build_query($valuesFromExport),
+			];
+			$this->_client->setOptions($curl_options);
+			$url = $this->web_proxy_url;
+
+		}
+
 
 		$urls = array();
-		$urls[] = new \Oara\Curl\Request('https://partner.bol.com/partner/s/excelReport/orders?', $valuesFromExport);
+		$urls[] = new \Oara\Curl\Request($url, []);
+
 		$exportReport = $this->_client->get($urls);
 
 		$my_file = $folder . \mt_rand() . '.xlsx';
@@ -215,5 +257,8 @@ class Bol extends \Oara\Network
 
 		return $totalTransactions;
 	}
+
+
+
 
 }
