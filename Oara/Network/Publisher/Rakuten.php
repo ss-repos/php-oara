@@ -118,7 +118,7 @@ class Rakuten extends \Oara\Network {
 					 *  are most likely added through a batch process. For this reason we skipp transactions if they do
 					 *  not contain a custom_id and are less than 12h old.
 					 */
-					if((!isset($transactionArray['custom_id']) || empty($transactionArray['custom_id'])) && (intval($transactionDate->diff(new \DateTime())->format('%h')) < 19)) {
+					if((!isset($transactionArray['custom_id']) || empty($transactionArray['custom_id'])) && (intval($transactionDate->diff(new \DateTime())->format('%h')) < 12)) {
 						continue;
 					}
 
