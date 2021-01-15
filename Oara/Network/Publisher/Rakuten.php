@@ -85,6 +85,7 @@ class Rakuten extends \Oara\Network {
 		$csv_report = file_get_contents($url);
 
 		$array = str_getcsv($csv_report, "\n");
+
 		$header = str_getcsv(array_shift($array));
 
 		foreach($array as $row) {
@@ -111,6 +112,16 @@ class Rakuten extends \Oara\Network {
 
 					$transactionArray['amount'] = \Oara\Utilities::parseDouble($transaction['Sales']);
 					$transactionArray['commission'] = \Oara\Utilities::parseDouble($transaction['Total Commission']);
+
+					/**
+					 *  We have noticed that the custom_id is not always present for the most recent transactions, these
+					 *  are most likely added through a batch process. For this reason we skipp transactions if they do
+					 *  not contain a custom_id and are less than 12h old.
+					 */
+					if((!isset($transactionArray['custom_id']) || empty($transactionArray['custom_id'])) && (intval($transactionDate->diff(new \DateTime())->format('%h')) < 19)) {
+						continue;
+					}
+
 					$totalTransactions[] = $transactionArray;
 				}
 			}
