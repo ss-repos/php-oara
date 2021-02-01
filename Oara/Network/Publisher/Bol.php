@@ -90,7 +90,7 @@ class Bol extends \Oara\Network
 		//If not login properly the construct launch an exception
 		$connection = false;
 
-		$connection_check_url = 'https://partner.bol.com/partner/index.do';
+		$connection_check_url = 'https://partner.bol.com/orders/rapportages';
 
 		if (empty($this->web_proxy_url)) {
 			$url = $connection_check_url;
@@ -110,7 +110,7 @@ class Bol extends \Oara\Network
 
 		$exportReport = $this->_client->get($urls);
 
-		if (\preg_match('/account\/uitloggen/', $exportReport[0], $match)) {
+		if (\preg_match('/app-root/', $exportReport[0], $match)) {
 			$connection = true;
 		}
 		return $connection;
@@ -173,32 +173,28 @@ class Bol extends \Oara\Network
 	 */
 	public function getTransactionList($merchantList = null, \DateTime $dStartDate = null, \DateTime $dEndDate = null)
 	{
+
+		return [];
+
 		$folder = \realpath(\dirname(COOKIES_BASE_DIR)) . '/pdf/';
 		$totalTransactions = array();
 		$valuesFromExport = array();
 
-		$report_url = 'https://partner.bol.com/partner/s/excelReport/orders';
+		$report_url = 'https://partner.bol.com/orders/v1/reports/orders/26742';
+
+		// https://partner.bol.com/orders/v1/reports/orders/26742?startDate=25-01-2021&endDate=01-02-2021
 
 		if (empty($this->web_proxy_url)) {
 			$url = $report_url;
 
-			$valuesFromExport[] = new \Oara\Curl\Parameter('id', "-1");
-			$valuesFromExport[] = new \Oara\Curl\Parameter('yearStart', $dStartDate->format("Y"));
-			$valuesFromExport[] = new \Oara\Curl\Parameter('monthStart', $dStartDate->format("m"));
-			$valuesFromExport[] = new \Oara\Curl\Parameter('dayStart', $dStartDate->format("d"));
-			$valuesFromExport[] = new \Oara\Curl\Parameter('yearEnd', $dEndDate->format("Y"));
-			$valuesFromExport[] = new \Oara\Curl\Parameter('monthEnd', $dEndDate->format("m"));
-			$valuesFromExport[] = new \Oara\Curl\Parameter('dayEnd', $dEndDate->format("d"));
+			$valuesFromExport[] = new \Oara\Curl\Parameter('startDate', $dStartDate->format("d-m-Y"));
+			$valuesFromExport[] = new \Oara\Curl\Parameter('endDate', $dEndDate->format("d-m-Y"));
 
 		} else {
 
-			$valuesFromExport['id'] = "-1";
-			$valuesFromExport['yearStart'] = $dStartDate->format("Y");
-			$valuesFromExport['monthStart'] = $dStartDate->format("m");
-			$valuesFromExport['dayStart'] = $dStartDate->format("d");
-			$valuesFromExport['yearEnd'] = $dEndDate->format("Y");
-			$valuesFromExport['monthEnd'] = $dEndDate->format("m");
-			$valuesFromExport['dayEnd'] = $dEndDate->format("d");
+			$valuesFromExport['startDate'] = $dStartDate->format("d-m-Y");
+			$valuesFromExport['endDate'] = $dEndDate->format("d-m-Y");
+
 
 			$curl_options = $this->_client->getOptions();
 			$curl_options[CURLOPT_HTTPHEADER] = [
