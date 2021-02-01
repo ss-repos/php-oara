@@ -5,6 +5,7 @@
     "require": {
         "php": ">=5.4",
         "phpoffice/phpexcel": "1.8.*",
+		"phpoffice/phpspreadsheet": "1.*",
         "ext-curl": "*",
         "zendframework/zend-dom": "*"
     },
