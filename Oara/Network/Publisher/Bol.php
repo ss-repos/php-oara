@@ -174,15 +174,11 @@ class Bol extends \Oara\Network
 	public function getTransactionList($merchantList = null, \DateTime $dStartDate = null, \DateTime $dEndDate = null)
 	{
 
-		return [];
-
 		$folder = \realpath(\dirname(COOKIES_BASE_DIR)) . '/pdf/';
 		$totalTransactions = array();
 		$valuesFromExport = array();
 
 		$report_url = 'https://partner.bol.com/orders/v1/reports/orders/26742';
-
-		// https://partner.bol.com/orders/v1/reports/orders/26742?startDate=25-01-2021&endDate=01-02-2021
 
 		if (empty($this->web_proxy_url)) {
 			$url = $report_url;
@@ -194,7 +190,6 @@ class Bol extends \Oara\Network
 
 			$valuesFromExport['startDate'] = $dStartDate->format("d-m-Y");
 			$valuesFromExport['endDate'] = $dEndDate->format("d-m-Y");
-
 
 			$curl_options = $this->_client->getOptions();
 			$curl_options[CURLOPT_HTTPHEADER] = [
@@ -218,7 +213,7 @@ class Bol extends \Oara\Network
 		\fwrite($handle, $data);
 		\fclose($handle);
 
-		$objReader = \PHPExcel_IOFactory::createReader('Excel2007');
+		$objReader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader('Xlsx');
 		$objReader->setReadDataOnly(true);
 		$objPHPExcel = $objReader->load($my_file);
 		$objWorksheet = $objPHPExcel->getActiveSheet();
@@ -226,20 +221,20 @@ class Bol extends \Oara\Network
 
 		for ($row = 2; $row <= $highestRow; ++$row) {
 
-
 			$transaction = Array();
-			$transaction['unique_id'] = $objWorksheet->getCellByColumnAndRow(0, $row)->getValue() . "_" . $objWorksheet->getCellByColumnAndRow(1, $row)->getValue();
+			$transaction['unique_id'] = $objWorksheet->getCellByColumnAndRow(1, $row)->getValue() . "_" . $objWorksheet->getCellByColumnAndRow(2, $row)->getValue();
 			$transaction['merchantId'] = "1";
-			$transactionDate = \DateTime::createFromFormat("d-m-Y", $objWorksheet->getCellByColumnAndRow(2, $row)->getValue());
-			$transaction['date'] = $transactionDate->format("Y-m-d 00:00:00");
+			$transactionDate = $objWorksheet->getCellByColumnAndRow(2, $row)->getValue();
+			$transaction['date'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($transactionDate)->format("Y-m-d 00:00:00");
+
 			$transaction['custom_id'] = $objWorksheet->getCellByColumnAndRow(8, $row)->getValue();
-			if ($objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'geaccepteerd') {
+			if ($objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'Geaccepteerd') {
 				$transaction['status'] = \Oara\Utilities::STATUS_CONFIRMED;
 			} else
-				if ($objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'in behandeling') {
+				if ($objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'Open') {
 					$transaction['status'] = \Oara\Utilities::STATUS_PENDING;
 				} else
-					if ($objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'geweigerd: klik te oud' || $objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'geweigerd') {
+					if ($objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'geweigerd: klik te oud' || $objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'Geweigerd') {
 						$transaction['status'] = \Oara\Utilities::STATUS_DECLINED;
 					} else {
 						throw new \Exception("new status " . $objWorksheet->getCellByColumnAndRow(14, $row)->getValue());
