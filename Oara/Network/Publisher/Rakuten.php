@@ -41,13 +41,47 @@ class Rakuten extends \Oara\Network {
 	public function getMerchantList() {
 
 
-		// Does not return the right data, so we do manual now...
-		// $merchant_list = $this->client->getMerchants();
+// Call takes a loooooooong time for some reason (> 1 minute). Replaced with manual advertiser set.
+//		$url = 'https://ran-reporting.rakutenmarketing.com/en/reports/advertisers/filters?date_range=last-7-days&include_summary=N&network=9&tz=GMT&date_type=transaction&token=' . $this->_credentials['token'];
+//
+//		if (!empty($this->_credentials['network'])) {
+//			$url .= '&network=' . $this->_credentials['network'];
+//		}
+//
+//		$csv_report = trim(file_get_contents($url));
+//
+//		// -------- remove the utf-8 BOM ----
+//		$csv_report = str_replace("\xEF\xBB\xBF",'',$csv_report);
+//
+//		$csv_array = str_getcsv($csv_report, "\n");
+//
+//		$header = str_getcsv(array_shift($csv_array));
+//
+//		foreach($csv_array as $row) {
+//			$row = str_getcsv($row);
+//			$merchant_list[] = array_combine($header, $row);
+//		}
+//		$merchants = array();
+//
+//		if (!empty($merchant_list)) {
+//
+//			foreach ($merchant_list as $id => $merchant) {
+//
+//				$obj = Array();
+//				$obj['cid'] = $merchant['MID'];
+//				$obj['name'] = $merchant['Advertiser Name'];
+//
+//				$merchants[] = $obj;
+//			}
+//		}
+
 
 		$merchant_list = [
 			'44522' => 'Superdry (EU)',
 			'43149' => 'H&M (DE)',
 			'43614' => 'Urban Outfitters (DE)',
+			'44523' => 'Superdry (UK)',
+			'46525' => 'Atterley',
 		];
 
 		$merchants = array();
