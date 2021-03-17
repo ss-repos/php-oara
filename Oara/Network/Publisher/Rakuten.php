@@ -116,6 +116,8 @@ class Rakuten extends \Oara\Network {
 			$url .= '&network=' . $this->_credentials['network'];
 		}
 
+		// calls take a loooooong time...
+		ini_set('default_socket_timeout', 5*60); // 5 minutes
 		$csv_report = file_get_contents($url);
 
 		$array = str_getcsv($csv_report, "\n");
