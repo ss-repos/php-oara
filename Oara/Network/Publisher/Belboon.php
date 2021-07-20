@@ -1,174 +1,157 @@
 <?php
 namespace Oara\Network\Publisher;
-    /**
-     * The goal of the Open Affiliate Report Aggregator (OARA) is to develop a set
-     * of PHP classes that can download affiliate reports from a number of affiliate networks, and store the data in a common format.
-     *
-     * Copyright (C) 2016  Fubra Limited
-     * This program is free software: you can redistribute it and/or modify
-     * it under the terms of the GNU Affero General Public License as published by
-     * the Free Software Foundation, either version 3 of the License, or any later version.
-     * This program is distributed in the hope that it will be useful,
-     * but WITHOUT ANY WARRANTY; without even the implied warranty of
-     * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-     * GNU Affero General Public License for more details.
-     * You should have received a copy of the GNU Affero General Public License
-     * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-     *
-     * Contact
-     * ------------
-     * Fubra Limited <support@fubra.com> , +44 (0)1252 367 200
-     **/
+
 /**
- * Api Class
+ * Export Class
  *
- * @author     Carlos Morillo Merino
+ * @author     Pim van den Broek
  * @category   Belboon
- * @copyright  Fubra Limited
  * @version    Release: 01.00
  *
  */
 class Belboon extends \Oara\Network
 {
+	private $api_password = null;
+	private $userid = null;
+	private $token = null;
 
-    private $_client = null;
-    private $_platformList = null;
+	/**
+	 * @param $credentials
+	 */
+	public function login($credentials)
+	{
 
-    /**
-     * @param $credentials
-     */
-    public function login($credentials)
-    {
-        $user = $credentials['user'];
-        $password = $credentials['apipassword'];
+		$this->api_password = $credentials['apipassword'];
+		$this->userid = $credentials['userid'];
 
-        //Setting the client.
+		return true;
 
-        $oSmartFeed = new \SoapClient("http://smartfeeds.belboon.com/SmartFeedServices.php?wsdl");
-        $oSessionHash = $oSmartFeed->login($user, $password);
+	}
 
-        $this->_client = new \SoapClient('http://api.belboon.com/?wsdl', array('login' => $user, 'password' => $password, 'trace' => true));
-        $this->_client->getAccountInfo();
+	/**
+	 * @return array
+	 */
+	public function getNeededCredentials() {
+		$credentials = array();
 
+		$parameter = array();
+		$parameter["description"] = "API Password ";
+		$parameter["required"] = true;
+		$parameter["name"] = "API";
+		$credentials["apipassword"] = $parameter;
 
-        if (!$oSessionHash->HasError) {
+		$parameter = array();
+		$parameter["description"] = "userid";
+		$parameter["required"] = true;
+		$parameter["name"] = "userid";
+		$credentials["userid"] = $parameter;
 
-            $sSessionHash = $oSessionHash->Records['sessionHash'];
+		return $credentials;
+	}
 
-            $aResult = $oSmartFeed->getPlatforms($sSessionHash);
-            $platformList = array();
-            foreach ($aResult->Records as $record) {
-                if ($record['status'] == "active") {
-                    $platformList[] = $record;
-                }
-            }
-            $this->_platformList = $platformList;
-        }
-    }
-
-    /**
-     * @return array
-     */
-    public function getNeededCredentials()
-    {
-        $credentials = array();
-
-        $parameter = array();
-        $parameter["description"] = "User Log in";
-        $parameter["required"] = true;
-        $parameter["name"] = "User";
-        $credentials["user"] = $parameter;
-
-        $parameter = array();
-        $parameter["description"] = "Api Password for Belboon";
-        $parameter["required"] = true;
-        $parameter["name"] = "Api Password";
-        $credentials["password"] = $parameter;
-
-        return $credentials;
-    }
-
-    /**
-     * @return bool
-     */
-    public function checkConnection()
-    {
-        $connection = true;
-        return $connection;
-    }
-
-    /**
-     * @return array
-     */
-    public function getMerchantList()
-    {
-        $merchantList = array();
-        foreach ($this->_platformList as $platform) {
-            $result = $this->_client->getPrograms($platform["id"], null, \utf8_encode('PARTNERSHIP'), null, null, null, 0);
-            foreach ($result->handler->programs as $merchant) {
-                $obj = array();
-                $obj["name"] = $merchant["programname"];
-                $obj["cid"] = $merchant["programid"];
-                $obj["url"] = $merchant["advertiserurl"];
-                $merchantList[] = $obj;
-            }
-        }
+	/**
+	 * @return bool
+	 */
+	public function checkConnection() {
+		return true;
+	}
 
 
-        return $merchantList;
-    }
+	/**
+	 * @return array
+	 */
+	public function getMerchantList() {
+		$merchants = array();
 
-    /**
-     * @param null $merchantList
-     * @param \DateTime|null $dStartDate
-     * @param \DateTime|null $dEndDate
-     * @return array
-     */
-    public function getTransactionList($merchantList = null, \DateTime $dStartDate = null, \DateTime $dEndDate = null)
-    {
-        $totalTransactions = array();
+		$start_date = new \DateTime();
+		$start_date->sub(new \DateInterval('P100D'));
 
-        $merchantIdMap = \Oara\Utilities::getMerchantIdMapFromMerchantList($merchantList);
+		$end_date = new \DateTime();
 
-        $result = $this->_client->getEventList(null, null, null, null, null, $dStartDate->format("Y-m-d"), $dEndDate->format("Y-m-d"), null, null, null, null, 0);
+		$url = 'https://export.service.belboon.com/'.$this->api_password.'/mlist_'.$this->userid.'.xml?filter[zeitraumvon]='.$start_date->format("d.m.Y").'&filter[zeitraumbis]='.$end_date->format("d.m.Y").'&filter[zeitraumAuswahl]=absolute';
+
+		$response = self::apiCall($url);
+
+		if (!empty($response->merchant)) {
+			foreach($response->merchant as $advertiser) {
+
+				$obj = [];
+				$obj['cid'] = (int) $advertiser->mid;
+				$obj['name'] = (string) $advertiser->title;
+				$merchants[] = $obj;
+			}
+		}
+		return $merchants;
+	}
+
+	/**
+	 * @param null $merchantList
+	 * @param \DateTime|null $dStartDate
+	 * @param \DateTime|null $dEndDate
+	 * @return array
+	 * @throws \Exception
+	 */
+	public function getTransactionList($merchantList = null, \DateTime $dStartDate = null, \DateTime $dEndDate = null) {
+
+		$totalTransactions = Array();
+
+		$dEndDate->add(new \DateInterval('P1D')); // add one day so we also get results of today
+
+		$url = 'https://export.service.belboon.com/'.$this->api_password.'/reporttransactions_'.$this->userid.'.xml?filter[currencycode]=EUR&filter[zeitraumvon]='.$dStartDate->format("d.m.Y").'&filter[zeitraumbis]='.$dEndDate->format("d.m.Y").'&filter[zeitraumAuswahl]=absolute';
+
+		$response = self::apiCall($url);
+
+		if (!empty($response)) {
+
+			foreach($response as $raw_transaction) {
+
+				$transaction = Array();
+				$transaction['unique_id'] = (string) $raw_transaction->conversion_uniqid;
+				$transaction['merchantId'] = (string) $raw_transaction->advertiser_id;
+				$transaction['date'] = (string) $raw_transaction->conversion_tracking_time;
+
+				$transaction['custom_id'] = (string) $raw_transaction->click_subid[0] ?? $raw_transaction->click_subid ?? '';
+
+				$transaction['amount'] = round($raw_transaction->conversion_commission_total, 2);
+				$transaction['commission'] = round($raw_transaction->conversion_order_value, 2);
+
+				if ($raw_transaction->status == 'approved' || $raw_transaction->status == 'confirmed') {
+					$transaction['status'] = \Oara\Utilities::STATUS_CONFIRMED;
+				} else if ($raw_transaction->status == 'rejected') {
+					$transaction['status'] = \Oara\Utilities::STATUS_DECLINED;
+				} else {
+					$transaction['status'] = \Oara\Utilities::STATUS_PENDING;
+				}
+
+				$totalTransactions[] = $transaction;
+			}
+		}
+
+		return $totalTransactions;
+
+	}
 
 
-        foreach ($result->handler->events as $event) {
-            if (isset($merchantIdMap[$event["programid"]])) {
+	private function apiCall($url, $post_data = null) {
 
-                $transaction = Array();
-                $transaction['unique_id'] = $event["eventid"];
-                $transaction['merchantId'] = $event["programid"];
-                $transaction['date'] = $event["eventdate"];
+		$url .= (strpos($url, '?') !== false) ? '&' : '?';
+		$url .= 'token=' . $this->token;
 
-                if ($event["subid"] != null) {
-                    $transaction['custom_id'] = $event["subid"];
-                    if (\preg_match("/subid1=/", $transaction['custom_id'])) {
-                        $transaction['custom_id'] = str_replace("subid1=", "", $transaction['custom_id']);
-                    }
-                }
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
 
-                if  (strlen($transaction['custom_id']) > 150){
-                    $transaction['custom_id'] = substr($transaction['custom_id'],0,150);
-                }
+		if (empty($post_data)) {
+			curl_setopt($ch, CURLOPT_POST, false);
+		} else {
+			curl_setopt($ch, CURLOPT_POST, true);
+			curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+		}
 
-                if ($event["eventstatus"] == 'APPROVED') {
-                    $transaction['status'] = \Oara\Utilities::STATUS_CONFIRMED;
-                } else
-                    if ($event["eventstatus"] == 'PENDING') {
-                        $transaction['status'] = \Oara\Utilities::STATUS_PENDING;
-                    } else
-                        if ($event["eventstatus"] == 'REJECTED') {
-                            $transaction['status'] = \Oara\Utilities::STATUS_DECLINED;
-                        }
+		$curl_results = curl_exec($ch);
+		curl_close($ch);
+		return simplexml_load_string($curl_results);
+	}
 
-                $transaction['amount'] = \Oara\Utilities::parseDouble($event["netvalue"]);
-                $transaction['commission'] = \Oara\Utilities::parseDouble($event["eventcommission"]);
-                $totalTransactions[] = $transaction;
-            }
-        }
-
-        return $totalTransactions;
-    }
 
 }
