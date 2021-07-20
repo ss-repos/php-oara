@@ -3,7 +3,7 @@
     "description": "The goal of this project is to develop a set of PHP classes that can download affiliate reports from a number of affiliate networks, and store the data in a common format.",
 
     "require": {
-        "php": ">=5.4",
+        "php": ">=7.0",
 		"phpoffice/phpspreadsheet": "1.*",
         "ext-curl": "*",
         "zendframework/zend-dom": "*"
