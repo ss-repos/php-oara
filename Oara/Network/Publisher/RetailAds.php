@@ -86,14 +86,13 @@ class RetailAds extends \Oara\Network
 	 * @param \DateTime|null $dStartDate
 	 * @param \DateTime|null $dEndDate
 	 * @return array
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public function getTransactionList($merchantList = null, \DateTime $dStartDate = null, \DateTime $dEndDate = null) {
 
 		$totalTransactions = Array();
 
 		$dEndDate->add(new \DateInterval('P1D')); // add one day so we also get results of today
-		$dStartDate->sub(new \DateInterval('P100D')); // add one day so we also get results of today
 
 		$url = 'https://data.retailads.net/api/stats_publisher?user='.$this->userid.'&key='.$this->api_password.'&type=leadssales&startDate='.$dStartDate->format("Y-m-d").'&endDate='.$dEndDate->format("Y-m-d").'&format=json';
 		$response = self::apiCall($url);
@@ -105,7 +104,7 @@ class RetailAds extends \Oara\Network
 				$transaction = Array();
 				$transaction['unique_id'] = $raw_transaction->orderId;
 				$transaction['merchantId'] = $raw_transaction->programId;
-				$transaction['date'] = $raw_transaction->timeClick;
+				$transaction['date'] = $raw_transaction->timeConversion;
 
 				$transaction['custom_id'] = $raw_transaction->subid ?? '';
 
