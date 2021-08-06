@@ -73,7 +73,7 @@ class Daisycon extends \Oara\Network
 					$this->_publisherId[] = $publisher["id"];
 				}
 			}
-            if (\count($this->_publisherId) == 0) {
+            if (empty($this->_publisherId)) {
                 throw new \Exception("No publisher found");
             }
 
@@ -144,7 +144,7 @@ class Daisycon extends \Oara\Network
                     }
                 }
 
-                if (\count($merchantList) != $pageSize) {
+                if (empty($merchantList) || \count($merchantList) != $pageSize) {
                     $finish = true;
                 }
                 $page++;
@@ -221,7 +221,7 @@ class Daisycon extends \Oara\Network
                     }
                 }
 
-                if (\count($transactionList) != $pageSize) {
+                if (empty($transactionList) || \count($transactionList) != $pageSize) {
                     $finish = true;
                 }
                 $page++;
