@@ -59,14 +59,14 @@ class Awin extends \Oara\Network
         	$this->_timezone = $credentials['timezone'];
 		}
 
-        //OLD AW
-        $nameSpace = 'http://api.affiliatewindow.com/';
-        $wsdlUrl = 'http://api.affiliatewindow.com/v6/AffiliateService?wsdl';
-        //Setting the client.
-        $this->_apiClient = new \SoapClient($wsdlUrl, array('login' => $this->_accountId, 'encoding' => 'UTF-8', 'password' => $this->_password, 'compression' => SOAP_COMPRESSION_ACCEPT | SOAP_COMPRESSION_GZIP | SOAP_COMPRESSION_DEFLATE, 'soap_version' => SOAP_1_1));
-        $soapHeader1 = new \SoapHeader($nameSpace, 'UserAuthentication', array('iId' => $this->_accountId, 'sPassword' => $this->_password, 'sType' => 'affiliate'), true, $nameSpace);
-        $soapHeader2 = new \SoapHeader($nameSpace, 'getQuota', true, true, $nameSpace);
-        $this->_apiClient->__setSoapHeaders(array($soapHeader1, $soapHeader2));
+        // OLD Affiliate Window -> disabled on 06/08/2021 as urls do not work anymore
+//        $nameSpace = 'http://api.affiliatewindow.com/';
+//        $wsdlUrl = 'http://api.affiliatewindow.com/v6/AffiliateService?wsdl';
+//        //Setting the client.
+//        $this->_apiClient = new \SoapClient($wsdlUrl, array('login' => $this->_accountId, 'encoding' => 'UTF-8', 'password' => $this->_password, 'compression' => SOAP_COMPRESSION_ACCEPT | SOAP_COMPRESSION_GZIP | SOAP_COMPRESSION_DEFLATE, 'soap_version' => SOAP_1_1));
+//        $soapHeader1 = new \SoapHeader($nameSpace, 'UserAuthentication', array('iId' => $this->_accountId, 'sPassword' => $this->_password, 'sType' => 'affiliate'), true, $nameSpace);
+//        $soapHeader2 = new \SoapHeader($nameSpace, 'getQuota', true, true, $nameSpace);
+//        $this->_apiClient->__setSoapHeaders(array($soapHeader1, $soapHeader2));
     }
 
     /**
