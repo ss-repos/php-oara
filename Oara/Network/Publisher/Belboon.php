@@ -149,13 +149,18 @@ class Belboon extends \Oara\Network
 		}
 
 		$curl_results = curl_exec($ch);
+		$response_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+		if ($response_code == 502) { // 502 Bad Gateway
+			return null;
+		}
+
 		curl_close($ch);
 
 		try {
 			return simplexml_load_string($curl_results);
 		} catch (\Exception $e) {
-			// fail silently, try again next time
-			// throw new \Exception('Belboon XML fail: ' . $curl_results);
+			throw new \Exception('Belboon XML fail: ' . $curl_results);
 		}
 
 
