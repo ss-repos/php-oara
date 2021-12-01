@@ -150,7 +150,14 @@ class Belboon extends \Oara\Network
 
 		$curl_results = curl_exec($ch);
 		curl_close($ch);
-		return simplexml_load_string($curl_results);
+
+		try {
+			return simplexml_load_string($curl_results);
+		} catch (\Exception $e) {
+			throw new \Exception('Belboon XML fail: ' . $curl_results);
+		}
+
+
 	}
 
 
