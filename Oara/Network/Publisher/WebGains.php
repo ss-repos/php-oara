@@ -109,7 +109,7 @@ class Webgains extends \Oara\Network
 			$start_date = $dStartDate->format('Y-m-d');
 			$end_date = $dEndDate->add(new \DateInterval('P1D'))->format('Y-m-d');
 
-			$transactions = $this->_apiClient->getFullEarnings($start_date, $end_date, $campaign_id, $this->username, $this->password);
+			$transactions = $this->_apiClient->getFullEarningsWithCurrency($start_date, $end_date, $campaign_id, $this->username, $this->password);
 
 			foreach ($transactions as $transaction) {
 				if ($merchantList == null || isset($merchantIdList[(int)$transaction->programID])) {
