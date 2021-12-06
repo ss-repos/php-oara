@@ -19,7 +19,7 @@ class Webgains extends \Oara\Network
 
 		$this->campaign_ids = $credentials['program_ids'];
 
-		$wsdlUrl = 'http://ws.webgains.com/aws.php';
+		$wsdlUrl = 'https://ws.webgains.com/aws.php';
 		//Setting the client.
 		$this->_apiClient = new \SoapClient($wsdlUrl, array(
 			'encoding' => 'UTF-8',

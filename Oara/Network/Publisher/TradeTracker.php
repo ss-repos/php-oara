@@ -13,7 +13,7 @@ namespace Oara\Network\Publisher;
      * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
      * GNU Affero General Public License for more details.
      * You should have received a copy of the GNU Affero General Public License
-     * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+     * along with this program.  If not, see <https://www.gnu.org/licenses/>.
      *
      * Contact
      * ------------
@@ -37,7 +37,7 @@ class TradeTracker extends \Oara\Network
         $user = $credentials['user'];
         $password = $credentials['apipassword'];
 
-        $wsdlUrl = 'http://ws.tradetracker.com/soap/affiliate?wsdl';
+        $wsdlUrl = 'https://ws.tradetracker.com/soap/affiliate?wsdl';
         //Setting the client.
         $this->_apiClient = new \SoapClient($wsdlUrl, array(
         	'encoding' => 'UTF-8',
