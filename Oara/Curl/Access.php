@@ -166,7 +166,7 @@ class Access
                 $done_content = \curl_multi_getcontent($ch);
                 if (!$allowEmptyResult && $done_content == false) {
                     if ($deep == 5) {
-                        throw new \Exception ('Fail in CURL access in POST, getcontent');
+                        throw new \Exception ('Fail in CURL access in POST, request recursion too deep (5). Curl error: '.curl_error($ch));
                     }
                     $keyPosition = self::keyPosition($curlResults, $chId);
                     $newUrlArray = array();
@@ -178,7 +178,7 @@ class Access
                 if (\curl_errno($ch) == 0) {
                     $curlResults [( string )$chId] = $done_content;
                 } else {
-                    throw new \Exception ('Fail in CURL access in POST, getcontent');
+                    throw new \Exception ('Fail in CURL access in POST. Curl error: '.curl_error($ch));
                 }
                 \curl_multi_remove_handle($mcurl, $ch);
                 \curl_close($ch);
