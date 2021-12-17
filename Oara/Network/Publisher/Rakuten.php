@@ -1,6 +1,12 @@
 <?php
 namespace Oara\Network\Publisher;
 
+/**
+ * API Class
+ *
+ * @author     Pim van den Broek
+ *
+ */
 class Rakuten extends \Oara\Network {
 
 	private $client;

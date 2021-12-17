@@ -135,14 +135,16 @@ class Daisycon extends \Oara\Network
                 $response = \curl_exec($ch);
                 $merchantList = \json_decode($response, true);
 
-                foreach ($merchantList as $merchant) {
-                    if ($merchant['status'] == 'active') {
-                        $obj = Array();
-                        $obj['cid'] = $merchant['id'];
-                        $obj['name'] = $merchant['name'];
-                        $merchants[] = $obj;
-                    }
-                }
+                if (!empty($merchantList)) {
+					foreach ($merchantList as $merchant) {
+						if ($merchant['status'] == 'active') {
+							$obj = array();
+							$obj['cid'] = $merchant['id'];
+							$obj['name'] = $merchant['name'];
+							$merchants[] = $obj;
+						}
+					}
+				}
 
                 if (empty($merchantList) || \count($merchantList) != $pageSize) {
                     $finish = true;
