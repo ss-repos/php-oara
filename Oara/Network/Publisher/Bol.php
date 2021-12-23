@@ -175,7 +175,6 @@ class Bol extends \Oara\Network
 	{
 
 		$folder = \realpath(\dirname(COOKIES_BASE_DIR)) . '/pdf/';
-		$totalTransactions = array();
 		$valuesFromExport = array();
 
 		$report_url = 'https://partner.bol.com/orders/v1/reports/orders/26742';
@@ -216,6 +215,17 @@ class Bol extends \Oara\Network
 		$objReader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader('Xlsx');
 		$objReader->setReadDataOnly(true);
 		$objPHPExcel = $objReader->load($my_file);
+
+		$totalTransactions = self::getTransationsFromExcel($objPHPExcel);
+
+		unlink($my_file);
+
+		return $totalTransactions;
+	}
+
+	public static function getTransationsFromExcel($objPHPExcel) {
+		$totalTransactions = [];
+
 		$objWorksheet = $objPHPExcel->getActiveSheet();
 		$highestRow = $objWorksheet->getHighestRow();
 
@@ -244,12 +254,73 @@ class Bol extends \Oara\Network
 			$totalTransactions[] = $transaction;
 
 		}
-		unlink($my_file);
+
+		$totalTransactions = self::mergeProductsFromOneOrder($totalTransactions);
+
 
 		return $totalTransactions;
 	}
 
+	/**
+	 * If an order contains multiple products, every product is in a new row with the same unique_id.
+	 * We want to merge them so we have one row containing the sums of all not-disapproved products
+	 *
+	 * @param $transactionList
+	 * @return array
+	 */
+	private static function mergeProductsFromOneOrder($transactionList) {
+		$unique_transactions = [];
+		$transactions_per_unique_id = [];
 
+		foreach ($transactionList as $transaction) {
+			$transactions_per_unique_id[$transaction['unique_id']][] = $transaction;
+		}
+
+		foreach ($transactions_per_unique_id as $unique_id => $product_transactions) {
+
+			// if there is only one product ordered, always just use that one
+			if (sizeof($product_transactions) == 1) {
+				$unique_transactions[] = reset($product_transactions);
+			} else { // the order contains multiple products
+
+				$open_and_approved_products = array_where($product_transactions, function ($product_transaction) {
+					return $product_transaction['status'] != \Oara\Utilities::STATUS_DECLINED;
+				});
+
+				// if we have open and/or approved products, use only those
+				if (!empty($open_and_approved_products)) {
+					$products = $open_and_approved_products;
+				} else { // only disapproved products, use all disapproved products
+					// There is a small chance that this results in a too big refund figure:
+					// If multiple products are marked as disapproved at *different* batches, and if after the last batch, all products have been disapproved:
+					// We have already updated the numbers to only contain the figures of the open & approved products in earlier batches.
+					// After the last product is disapproved, we use the sum of all the disapproved figures, as we do not have a history.
+					// This should be very rare however, if at all occurring.
+					$products = $product_transactions;
+				}
+
+				$merged_transaction = [];
+
+				// go add the numbers
+				foreach ($products as $product_transaction) {
+
+					if (empty($merged_transaction)) { // first product
+						$merged_transaction = $product_transaction;
+					} else { // additional products, go add the numbers
+						$merged_transaction['amount'] += $product_transaction['amount'];
+						$merged_transaction['commission'] += $product_transaction['commission'];
+					}
+				}
+
+				$unique_transactions[] = $merged_transaction;
+
+			}
+
+		}
+
+		return $unique_transactions;
+
+	}
 
 
 }

@@ -72,35 +72,8 @@ class BolLocal extends \Oara\Network
 		$objReader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader('Xlsx');
 		$objReader->setReadDataOnly(true);
 		$objPHPExcel = $objReader->load($filename);
-		$objWorksheet = $objPHPExcel->getActiveSheet();
-		$highestRow = $objWorksheet->getHighestRow();
 
-		for ($row = 2; $row <= $highestRow; ++$row) {
-
-			$transaction = Array();
-			$transaction['unique_id'] = $objWorksheet->getCellByColumnAndRow(1, $row)->getValue() . "_" . $objWorksheet->getCellByColumnAndRow(2, $row)->getValue();
-
-			$transaction['merchantId'] = "1";
-			$transactionDate = $objWorksheet->getCellByColumnAndRow(2, $row)->getValue();
-			$transaction['date'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($transactionDate)->format("Y-m-d 00:00:00");
-
-			$transaction['custom_id'] = $objWorksheet->getCellByColumnAndRow(8, $row)->getValue();
-			if ($objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'Geaccepteerd') {
-				$transaction['status'] = \Oara\Utilities::STATUS_CONFIRMED;
-			} else
-				if ($objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'Open') {
-					$transaction['status'] = \Oara\Utilities::STATUS_PENDING;
-				} else
-					if ($objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'geweigerd: klik te oud' || $objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'Geweigerd') {
-						$transaction['status'] = \Oara\Utilities::STATUS_DECLINED;
-					} else {
-						throw new \Exception("new status " . $objWorksheet->getCellByColumnAndRow(14, $row)->getValue());
-					}
-			$transaction['amount'] = \Oara\Utilities::parseDouble(round($objWorksheet->getCellByColumnAndRow(11, $row)->getValue(), 2));
-			$transaction['commission'] = \Oara\Utilities::parseDouble(round($objWorksheet->getCellByColumnAndRow(12, $row)->getValue(), 2));
-			$totalTransactions[] = $transaction;
-
-		}
+		$totalTransactions = Bol::getTransationsFromExcel($objPHPExcel);
 
 		return $totalTransactions;
 	}
