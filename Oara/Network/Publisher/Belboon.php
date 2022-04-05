@@ -112,8 +112,8 @@ class Belboon extends \Oara\Network
 
 				$transaction['custom_id'] = (string) $raw_transaction->click_subid[0] ?? $raw_transaction->click_subid ?? '';
 
-				$transaction['amount'] = round($raw_transaction->conversion_commission_total, 2);
-				$transaction['commission'] = round($raw_transaction->conversion_order_value, 2);
+				$transaction['commission'] = round($raw_transaction->conversion_commission_total, 2);
+				$transaction['amount'] = round($raw_transaction->conversion_order_value, 2);
 
 				if ($raw_transaction->status == 'approved' || $raw_transaction->status == 'confirmed') {
 					$transaction['status'] = \Oara\Utilities::STATUS_CONFIRMED;
