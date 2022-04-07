@@ -13,6 +13,7 @@ class Adtraction extends \Oara\Network
 {
 	private $api_password = null;
 	private $market = null;
+	private $channel_id = null;
 
 
 	/**
@@ -23,6 +24,7 @@ class Adtraction extends \Oara\Network
 
 		$this->api_password = $credentials['api_token'];
 		$this->market = $credentials['market'];
+		$this->channel_id = $credentials['channel_id'];
 
 		return true;
 
@@ -57,17 +59,11 @@ class Adtraction extends \Oara\Network
 	public function getMerchantList() {
 		$merchants = array();
 
-		$start_date = new \DateTime();
-		$start_date->sub(new \DateInterval('P100D'));
-
-		$end_date = new \DateTime();
-
 		$url = 'https://api.adtraction.com/v3/partner/programs/';
-//		$post_data = '{ "market": "'.$this->market.'", "approvalStatus": 1 }';
-		$post_data = '{ "market": "'.$this->market.'", "programId": 1650743749 }'; // temp hack
-
+		$post_data = '{ "market": "'.$this->market.'", "channelId": '.$this->channel_id.', "approvalStatus": 1 }';
 
 		$response = self::apiCall($url, $post_data);
+
 		if (!empty($response)) {
 			foreach($response as $advertiser) {
 
@@ -93,7 +89,6 @@ class Adtraction extends \Oara\Network
 		$totalTransactions = Array();
 
 		$dEndDate->add(new \DateInterval('P1D')); // add one day so we also get results of today
-		$dStartDate->sub(new \DateInterval('P30D')); // add one day so we also get results of today
 
 		$url = 'https://api.adtraction.com/v2/partner/transactions/';
 
