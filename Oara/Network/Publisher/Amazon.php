@@ -98,7 +98,7 @@ class Amazon extends \Oara\Network {
 				$filename = \realpath(\dirname(COOKIES_BASE_DIR)) . "/pdf/{$this->_credentials["user"]}-earnings-report-$date.tsv.gz";
 				\file_put_contents($filename, $output);
 				$zd = \gzopen($filename, "r");
-				$contents = \gzread($zd, 10000);
+				$contents = \gzread($zd, 1000000);
 				\gzclose($zd);
 
 				$exportData = \explode("\n", $contents);
