@@ -178,7 +178,7 @@ class Daisycon extends \Oara\Network
             $finish = false;
 
             while (!$finish) {
-                $url = "https://services.daisycon.com:443/publishers/$publisherId/transactions?page=$page&per_page=$pageSize&start=" . \urlencode($dStartDate->format("Y-m-d H:i:s")) . "&end=" . \urlencode($dEndDate->format("Y-m-d H:i:s"));
+                $url = "https://services.daisycon.com:443/publishers/$publisherId/transactions?currency_code=EUR&page=$page&per_page=$pageSize&start=" . \urlencode($dStartDate->format("Y-m-d H:i:s")) . "&end=" . \urlencode($dEndDate->format("Y-m-d H:i:s"));
                 // initialize curl resource
                 $ch = \curl_init();
                 // set the http request authentication headers
