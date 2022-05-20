@@ -5,7 +5,7 @@ namespace Oara\Network\Publisher;
  * Export Class
  *
  * @author     Pim van den Broek
- * @version    Release: 01.00
+ * @version    Release: 01.01
  *
  */
 class TradeDoubler extends \Oara\Network
@@ -77,43 +77,56 @@ class TradeDoubler extends \Oara\Network
 	public function getTransactionList($merchantList = null, \DateTime $dStartDate = null, \DateTime $dEndDate = null): array {
 
 		$totalTransactions = [];
-		$page_size = 100;
-		$restUrl = 'https://connect.tradedoubler.com/publisher/report/transactions?fromDate='.$dStartDate->format('Ymd').'&toDate='.$dEndDate->format('Ymd') . '&limit='.$page_size;
-		$offset = 0;
+		$page_size = 100; // API max number results is 100
+		$days = 31; // API max number is days is 31
 
-		do {
-			$url = $restUrl . '&offset=' . $offset;
+		$end_date_for_api = (clone $dStartDate)->add(new \DateInterval('P'.$days.'D'));
 
-			$response = self::apiCall($url);
-			$result = json_decode($response, true);
+		do { // loop over date frames
+			$restUrl = 'https://connect.tradedoubler.com/publisher/report/transactions?fromDate=' . $dStartDate->format('Ymd') . '&toDate=' . $end_date_for_api->format('Ymd') . '&limit=' . $page_size;
+			$offset = 0;
 
-			if (!empty($result['items'])) {
-				foreach ($result['items'] as $item) {
-					$transaction = [];
-					$transaction ['unique_id'] = $item['transactionId'];
-					$transaction['merchantId'] = $item['programId'];
-					$transactionDate = \DateTime::createFromFormat("Y-m-d\TH:i:s", \substr($item['timeOfTransaction'], 0, 19));
-					$transaction['date'] = $transactionDate->format("Y-m-d H:i:s");
+			do { // loop over page size
+				$url = $restUrl . '&offset=' . $offset;
 
-					$transaction['custom_id'] = $item['epi'] ?? '';
+				$response = self::apiCall($url);
+				$result = json_decode($response, true);
 
-					$transaction['amount'] = $item['orderValue'];
-					$transaction['commission'] = $item['commission'];
+				if (!empty($result['items'])) {
+					foreach ($result['items'] as $item) {
 
-					if ($item['status'] == 'A') {
-						$transaction ['status'] = \Oara\Utilities::STATUS_CONFIRMED;
-					} else if ($item['status'] == 'D') {
-						$transaction ['status'] = \Oara\Utilities::STATUS_DECLINED;
-					} else {
-						$transaction ['status'] = \Oara\Utilities::STATUS_PENDING;
+						$transaction = [];
+						$transaction ['unique_id'] = $item['transactionId'];
+						$transaction['merchantId'] = $item['programId'];
+						$transactionDate = \DateTime::createFromFormat("Y-m-d\TH:i:s", \substr($item['timeOfTransaction'], 0, 19));
+						$transaction['date'] = $transactionDate->format("Y-m-d H:i:s");
+
+						$transaction['custom_id'] = $item['epi'] ?? '';
+
+						$transaction['amount'] = $item['orderValue'];
+						$transaction['commission'] = $item['commission'];
+
+						if ($item['status'] == 'A') {
+							$transaction ['status'] = \Oara\Utilities::STATUS_CONFIRMED;
+						} else if ($item['status'] == 'D') {
+							$transaction ['status'] = \Oara\Utilities::STATUS_DECLINED;
+						} else {
+							$transaction ['status'] = \Oara\Utilities::STATUS_PENDING;
+						}
+
+						$totalTransactions[] = $transaction;
 					}
-
-					$totalTransactions[] = $transaction;
 				}
-			}
 
-			$offset += $page_size;
-		} while (!empty($result['items']));
+				$offset += $page_size;
+			} while (!empty($result['items']) && sizeof($result['items']) == $page_size);
+
+			$get_more_dates = $end_date_for_api < $dEndDate;
+
+			$end_date_for_api->add(new \DateInterval('P'.($days+1).'D')); // $days + 1 because the dates are inclusive, thus otherwise we would get double transactions
+			$dStartDate->add(new \DateInterval('P'.($days+1).'D')); // $days + 1 because the dates are inclusive, thus otherwise we would get double transactions
+
+		} while ($get_more_dates);
 
 		return $totalTransactions;
 
