@@ -237,26 +237,26 @@ class Bol extends \Oara\Network
 			$transactionDate = $objWorksheet->getCellByColumnAndRow(2, $row)->getValue();
 			$transaction['date'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($transactionDate)->format("Y-m-d 00:00:00");
 
-			$transaction['custom_id'] = $objWorksheet->getCellByColumnAndRow(8, $row)->getValue();
-			if ($objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'Geaccepteerd') {
+			$transaction['custom_id'] = $objWorksheet->getCellByColumnAndRow(7, $row)->getValue();
+			$status = $objWorksheet->getCellByColumnAndRow(13, $row)->getValue();
+			if ($status == 'Geaccepteerd') {
 				$transaction['status'] = \Oara\Utilities::STATUS_CONFIRMED;
 			} else
-				if ($objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'Open') {
+				if ($status == 'Open') {
 					$transaction['status'] = \Oara\Utilities::STATUS_PENDING;
 				} else
-					if ($objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'geweigerd: klik te oud' || $objWorksheet->getCellByColumnAndRow(14, $row)->getValue() == 'Geweigerd') {
+					if ($status == 'geweigerd: klik te oud' || $status == 'Geweigerd') {
 						$transaction['status'] = \Oara\Utilities::STATUS_DECLINED;
 					} else {
-						throw new \Exception("new status " . $objWorksheet->getCellByColumnAndRow(14, $row)->getValue());
+						throw new \Exception("new status " . $status);
 					}
-			$transaction['amount'] = \Oara\Utilities::parseDouble(round($objWorksheet->getCellByColumnAndRow(11, $row)->getValue(), 2));
-			$transaction['commission'] = \Oara\Utilities::parseDouble(round($objWorksheet->getCellByColumnAndRow(12, $row)->getValue(), 2));
+			$transaction['amount'] = \Oara\Utilities::parseDouble(round($objWorksheet->getCellByColumnAndRow(10, $row)->getValue(), 2)); // price without VAT
+			$transaction['commission'] = \Oara\Utilities::parseDouble(round($objWorksheet->getCellByColumnAndRow(11, $row)->getValue(), 2));
 			$totalTransactions[] = $transaction;
 
 		}
 
 		$totalTransactions = self::mergeProductsFromOneOrder($totalTransactions);
-
 
 		return $totalTransactions;
 	}
