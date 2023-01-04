@@ -4,7 +4,13 @@ namespace Oara\Network\Publisher;
 /**
  * API Class
  *
+ * We do not use the official API, as this did not give results.
+ * Instead, we use the report-api-calls. This requires an "advertisers" report to be created containing the following columns:
+ * MID | Advertiser Name | # of Clicks
+ *
+ *
  * @author     Pim van den Broek
+ *
  *
  */
 class Rakuten extends \Oara\Network {
@@ -47,58 +53,34 @@ class Rakuten extends \Oara\Network {
 	public function getMerchantList() {
 
 
-// Call takes a loooooooong time for some reason (> 1 minute). Replaced with manual advertiser set.
-//		$url = 'https://ran-reporting.rakutenmarketing.com/en/reports/advertisers/filters?date_range=last-7-days&include_summary=N&network=9&tz=GMT&date_type=transaction&token=' . $this->_credentials['token'];
-//
-//		if (!empty($this->_credentials['network'])) {
-//			$url .= '&network=' . $this->_credentials['network'];
-//		}
-//
-//		$csv_report = trim(file_get_contents($url));
-//
-//		// -------- remove the utf-8 BOM ----
-//		$csv_report = str_replace("\xEF\xBB\xBF",'',$csv_report);
-//
-//		$csv_array = str_getcsv($csv_report, "\n");
-//
-//		$header = str_getcsv(array_shift($csv_array));
-//
-//		foreach($csv_array as $row) {
-//			$row = str_getcsv($row);
-//			$merchant_list[] = array_combine($header, $row);
-//		}
-//		$merchants = array();
-//
-//		if (!empty($merchant_list)) {
-//
-//			foreach ($merchant_list as $id => $merchant) {
-//
-//				$obj = Array();
-//				$obj['cid'] = $merchant['MID'];
-//				$obj['name'] = $merchant['Advertiser Name'];
-//
-//				$merchants[] = $obj;
-//			}
-//		}
+		$url = 'https://ran-reporting.rakutenmarketing.com/en/reports/advertisers/filters?date_range=last-7-days&include_summary=N&network=9&tz=GMT&date_type=transaction&token=' . $this->_credentials['token'];
 
+		if (!empty($this->_credentials['network'])) {
+			$url .= '&network=' . $this->_credentials['network'];
+		}
 
-		$merchant_list = [
-			'44522' => 'Superdry (EU)',
-			'43149' => 'H&M (DE)',
-			'43614' => 'Urban Outfitters (DE)',
-			'44523' => 'Superdry (UK)',
-			'46525' => 'Atterley',
-		];
+		$csv_report = trim(file_get_contents($url));
 
+		// -------- remove the utf-8 BOM ----
+		$csv_report = str_replace("\xEF\xBB\xBF",'',$csv_report);
+
+		$csv_array = str_getcsv($csv_report, "\n");
+
+		$header = str_getcsv(array_shift($csv_array));
+
+		foreach($csv_array as $row) {
+			$row = str_getcsv($row);
+			$merchant_list[] = array_combine($header, $row);
+		}
 		$merchants = array();
 
 		if (!empty($merchant_list)) {
 
-			foreach ($merchant_list as $merchant_id => $merchant_name) {
+			foreach ($merchant_list as $id => $merchant) {
 
 				$obj = Array();
-				$obj['cid'] = $merchant_id;
-				$obj['name'] = $merchant_name;
+				$obj['cid'] = $merchant['MID'];
+				$obj['name'] = $merchant['Advertiser Name'];
 
 				$merchants[] = $obj;
 			}
@@ -157,10 +139,10 @@ class Rakuten extends \Oara\Network {
 
 					/**
 					 *  We have noticed that the custom_id is not always present for the most recent transactions, these
-					 *  are most likely added through a batch process. For this reason we skipp transactions if they do
+					 *  are most likely added through a batch process. For this reason we skip transactions if they do
 					 *  not contain a custom_id and are less than 12h old.
 					 */
-					if((!isset($transactionArray['custom_id']) || empty($transactionArray['custom_id'])) && (intval($transactionDate->diff(new \DateTime())->format('%h')) < 12)) {
+					if((empty($transactionArray['custom_id'])) && (intval($transactionDate->diff(new \DateTime())->format('%h')) < 12)) {
 						continue;
 					}
 
