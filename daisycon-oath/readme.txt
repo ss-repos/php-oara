@@ -1,0 +1,1 @@
+php daisycon-oath/cli-client.php --clientId 1234567890 --clientSecret QWERTYUIOP --outputFile tokens.json 
