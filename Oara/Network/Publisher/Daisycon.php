@@ -114,7 +114,7 @@ class Daisycon extends \Oara\Network {
 
 		// retrieve refresh token from valuestore
 		if(empty($refresh_token = $this->_credentials['valuestore_location']::retrieve('daisycon_refresh_token'))) {
-			throw new Exception("No refresh token found");
+			throw new \Exception("No refresh token found");
 		}
 
 		$response = $this->callAPI(
