@@ -107,7 +107,7 @@ class Adtraction extends \Oara\Network
 					$transaction['merchantId'] = (string)$raw_transaction->click->programId;
 					$transaction['date'] = (string)$raw_transaction->transactionDate;
 
-					$transaction['custom_id'] = (string)$raw_transaction->click->epi ?? '';
+					$transaction['custom_id'] = (string)($raw_transaction->click->epi ?? '');
 
 					$transaction['commission'] = round($raw_transaction->commission, 2);
 					$transaction['amount'] = round($raw_transaction->orderValue, 2);
