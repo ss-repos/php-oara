@@ -4,7 +4,7 @@ namespace Oara\Network\Publisher;
 /**
  * API Class
  *
- * We do not use the official API, as this did not give results.
+ * We do not use the official API, since you can only query back 30 days with it
  * Instead, we use the report-api-calls. This requires an "advertisers" report to be created containing the following columns:
  * MID | Advertiser Name | # of Clicks
  *
@@ -41,19 +41,18 @@ class Rakuten extends \Oara\Network {
 	/**
 	 * @return bool
 	 */
-	public function checkConnection() {
+	public function checkConnection(): bool {
 
 		return true;
 	}
 
 	/**
 	 * @return array
-	 * @throws Exception
+	 * @throws \Exception
 	 */
-	public function getMerchantList() {
+	public function getMerchantList(): array {
 
-
-		$url = 'https://ran-reporting.rakutenmarketing.com/en/reports/advertisers/filters?date_range=last-7-days&include_summary=N&network=9&tz=GMT&date_type=transaction&token=' . $this->_credentials['token'];
+		$url = 'https://ran-reporting.rakutenmarketing.com/en/reports/api-orders-report/filters?date_range=last-7-days&include_summary=N&network=9&tz=GMT&date_type=transaction&token=' . $this->_credentials['token'];
 
 		if (!empty($this->_credentials['network'])) {
 			$url .= '&network=' . $this->_credentials['network'];
@@ -90,21 +89,20 @@ class Rakuten extends \Oara\Network {
 
 	}
 
-	public function getTransactionList($merchantList = null, \DateTime $dStartDate = null, \DateTime $dEndDate = null)
-	{
+	public function getTransactionList($merchantList = null, \DateTime $dStartDate = null, \DateTime $dEndDate = null): array {
 		$totalTransactions = array();
 
 		$merchantIdList = \Oara\Utilities::getMerchantIdMapFromMerchantList($merchantList);
 
 		$transactionList = [];
 
-		$url = 'https://ran-reporting.rakutenmarketing.com/en/reports/api-orders-report/filters?start_date='.$dStartDate->format("Y-m-d").'&end_date='.$dEndDate->format("Y-m-d").'&include_summary=N&tz=GMT&date_type=transaction&token=' . $this->_credentials['token'];
+		$url = 'https://ran-reporting.rakutenmarketing.com/en/reports/api-orders-report/filters?start_date='.$dStartDate->format("Y-m-d").'&end_date='.$dEndDate->sub(new \DateInterval("P1D"))->format("Y-m-d").'&include_summary=N&tz=GMT&date_type=transaction&token=' . $this->_credentials['token'];
 
 		if (!empty($this->_credentials['network'])) {
 			$url .= '&network=' . $this->_credentials['network'];
 		}
 
-		// calls take a loooooong time...
+		// calls sometimes take a loooooong time...
 		ini_set('default_socket_timeout', 5*60); // 5 minutes
 		$csv_report = file_get_contents($url);
 
