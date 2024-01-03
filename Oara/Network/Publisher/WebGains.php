@@ -118,13 +118,10 @@ class Webgains extends \Oara\Network
 			'Content-Type: application/json;charset=UTF-8'
 		]);
 
-		curl_setopt($ch, CURLOPT_HTTPHEADER, array("Authorization: Bearer " . $this->api_token));
 		if (!empty($post_data)) {
 			curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
 		}
 		$curl_results = curl_exec($ch);
-
-		$response_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
 		curl_close($ch);
 
