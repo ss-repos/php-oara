@@ -67,6 +67,10 @@ class Daisycon extends \Oara\Network {
 				$response = $this->callAPI($url,'GET');
 				$transactionList = json_decode($response, true);
 
+				if(!empty($transactionList['error'])) { // a server side error occurred
+					return $totalTransactions;
+				}
+
 				if (!empty($transactionList)) {
 					foreach ($transactionList as $transaction) {
 						$merchantId = $transaction['program_id'];
