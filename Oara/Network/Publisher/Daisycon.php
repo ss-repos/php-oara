@@ -57,59 +57,72 @@ class Daisycon extends \Oara\Network {
 
 		$merchantIdList = \Oara\Utilities::getMerchantIdMapFromMerchantList($merchantList);
 
+		$days = 5; // API max number is days is 31
+		$page_size = 500; // API max page size if 500
+
 		foreach ($this->_credentials['media_ids'] as $media_id) {
-			$page = 1;
-			$page_size = 500;
-			$finish = false;
 
-			while (!$finish) {
-				$url = 'https://services.daisycon.com/publishers/' . $this->_credentials['publisher_id'] . '/transactions?currency_code=EUR&media_id='.$media_id.'&page='.$page.'&per_page='.$page_size.'&start='. \urlencode($dStartDate->format("Y-m-d H:i:s")) . '&end=' . \urlencode($dEndDate->format("Y-m-d H:i:s"));
-				$response = $this->callAPI($url,'GET');
-				$transactionList = json_decode($response, true);
+			$end_date_for_api = (clone $dStartDate)->add(new \DateInterval('P'.$days.'D'));
 
-				if(!empty($transactionList['error'])) { // a server side error occurred
-					return $totalTransactions;
-				}
+			do { // loop over date frames (API max result set size is 10000, so we cannot use the date range with a high page number for bigger result set and therefore we have to split up)
 
-				if (!empty($transactionList)) {
-					foreach ($transactionList as $transaction) {
-						$merchantId = $transaction['program_id'];
-						if (isset($merchantIdList[$merchantId])) {
+				$api_url = 'https://services.daisycon.com/publishers/' . $this->_credentials['publisher_id'] . '/transactions?currency_code=EUR&media_id='.$media_id.'&per_page='.$page_size.'&start='. \urlencode($dStartDate->format("Y-m-d H:i:s")) . '&end=' . \urlencode($end_date_for_api->format("Y-m-d H:i:s"));
 
-							$transactionArray = Array();
-							$transactionArray['unique_id'] = $transaction['affiliatemarketing_id'];
-							$transactionArray['merchantId'] = $merchantId;
-							$transactionDate = new \DateTime($transaction['date']);
-							$transactionArray['date'] = $transactionDate->format("Y-m-d H:i:s");
-							$parts = \current($transaction['parts']);
-							if ($parts['subid'] != null) {
-								$transactionArray['custom_id'] = $parts['subid'];
-							}
-							if ($parts['status'] == 'approved') {
-								$transactionArray['status'] = \Oara\Utilities::STATUS_CONFIRMED;
-							} else
-								if ($parts['status'] == 'pending' || $parts['status'] == 'potential' || $parts['status'] == 'open') {
-									$transactionArray['status'] = \Oara\Utilities::STATUS_PENDING;
+				$page = 1;
+				$finish = false;
+
+				while (!$finish) {
+					$url = $api_url . '&page=' . $page;
+
+					$response = $this->callAPI($url, 'GET');
+					$transactionList = json_decode($response, true);
+					if (!empty($transactionList)) {
+						foreach ($transactionList as $transaction) {
+
+							$merchantId = $transaction['program_id'];
+							if (isset($merchantIdList[$merchantId])) {
+
+								$transactionArray = array();
+								$transactionArray['unique_id'] = $transaction['affiliatemarketing_id'];
+								$transactionArray['merchantId'] = $merchantId;
+								$transactionDate = new \DateTime($transaction['date']);
+								$transactionArray['date'] = $transactionDate->format("Y-m-d H:i:s");
+								$parts = \current($transaction['parts']);
+								if ($parts['subid'] != null) {
+									$transactionArray['custom_id'] = $parts['subid'];
+								}
+								if ($parts['status'] == 'approved') {
+									$transactionArray['status'] = \Oara\Utilities::STATUS_CONFIRMED;
 								} else
-									if ($parts['status'] == 'disapproved' || $parts['status'] == 'incasso') {
-										$transactionArray['status'] = \Oara\Utilities::STATUS_DECLINED;
-									} else {
-										throw new \Exception("New status {$parts['status']}");
-									}
-							$transactionArray['amount'] = \Oara\Utilities::parseDouble($parts['revenue']);
-							$transactionArray['commission'] = \Oara\Utilities::parseDouble($parts['commission']);
-							$totalTransactions[] = $transactionArray;
+									if ($parts['status'] == 'pending' || $parts['status'] == 'potential' || $parts['status'] == 'open') {
+										$transactionArray['status'] = \Oara\Utilities::STATUS_PENDING;
+									} else
+										if ($parts['status'] == 'disapproved' || $parts['status'] == 'incasso') {
+											$transactionArray['status'] = \Oara\Utilities::STATUS_DECLINED;
+										} else {
+											throw new \Exception("New status {$parts['status']}");
+										}
+								$transactionArray['amount'] = \Oara\Utilities::parseDouble($parts['revenue']);
+								$transactionArray['commission'] = \Oara\Utilities::parseDouble($parts['commission']);
+								$totalTransactions[] = $transactionArray;
+							}
 						}
 					}
+
+					if (empty($transactionList) || \count($transactionList) != $page_size) {
+						$finish = true;
+					}
+					$page++;
 				}
 
-				if (empty($transactionList) || \count($transactionList) != $page_size) {
-					$finish = true;
-				}
-				$page++;
-			}
-		}
+				$get_more_dates = $end_date_for_api < $dEndDate;
 
+				$end_date_for_api->add(new \DateInterval('P'.($days).'D'));
+				$dStartDate->add(new \DateInterval('P'.($days).'D'));
+
+			} while ($get_more_dates);
+
+		} // end for every media
 		return $totalTransactions;
 	}
 
