@@ -23,6 +23,7 @@ class Daisycon extends \Oara\Network {
 		$merchants = [];
 
 		foreach ($this->_credentials['media_ids'] as $media_id) {
+
 			$page = 1;
 			$page_size = 250;
 			$finish = false;
@@ -62,11 +63,12 @@ class Daisycon extends \Oara\Network {
 
 		foreach ($this->_credentials['media_ids'] as $media_id) {
 
+			$start_date_for_api = (clone $dStartDate);
 			$end_date_for_api = (clone $dStartDate)->add(new \DateInterval('P'.$days.'D'));
 
 			do { // loop over date frames (API max result set size is 10000, so we cannot use the date range with a high page number for bigger result set and therefore we have to split up)
 
-				$api_url = 'https://services.daisycon.com/publishers/' . $this->_credentials['publisher_id'] . '/transactions?currency_code=EUR&media_id='.$media_id.'&per_page='.$page_size.'&start='. \urlencode($dStartDate->format("Y-m-d H:i:s")) . '&end=' . \urlencode($end_date_for_api->format("Y-m-d H:i:s"));
+				$api_url = 'https://services.daisycon.com/publishers/' . $this->_credentials['publisher_id'] . '/transactions?currency_code=EUR&media_id='.$media_id.'&per_page='.$page_size.'&start='. \urlencode($start_date_for_api->format("Y-m-d H:i:s")) . '&end=' . \urlencode($end_date_for_api->format("Y-m-d H:i:s"));
 
 				$page = 1;
 				$finish = false;
@@ -117,8 +119,8 @@ class Daisycon extends \Oara\Network {
 
 				$get_more_dates = $end_date_for_api < $dEndDate;
 
+				$start_date_for_api->add(new \DateInterval('P'.($days).'D'));
 				$end_date_for_api->add(new \DateInterval('P'.($days).'D'));
-				$dStartDate->add(new \DateInterval('P'.($days).'D'));
 
 			} while ($get_more_dates);
 
