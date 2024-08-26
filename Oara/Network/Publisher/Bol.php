@@ -1,160 +1,31 @@
 <?php
 namespace Oara\Network\Publisher;
 
-class Bol extends \Oara\Network
-{
+class Bol extends \Oara\Network {
 
-	private $_client, $web_proxy_url, $web_proxy_auth = null;
+	private $_credentials = null;
 
 	/**
 	 * @param $credentials
 	 */
-	public function login($credentials)	{
+	public function login(array $credentials)	{
 
-		$this->_client = new \Oara\Curl\Access($credentials);
-
-		$login_get_url = 'https://login.bol.com/login?client_id=apm';
-
-		$curl_options = $this->_client->getOptions();
-
-		if (!empty($credentials['proxy'])) { // Use IP proxy
-			$curl_options[CURLOPT_PROXY] = $credentials['proxy'];
-			$curl_options[CURLOPT_PROXYUSERPWD] = $credentials['proxyuserpwd'];
-			$url = $login_get_url;
-		} else if (!empty($credentials['web_proxy'])) { // Use a web proxy instead of IP proxy
-
-			$this->web_proxy_url = $credentials['web_proxy'];
-			$this->web_proxy_auth = $credentials['web_proxy_auth'];
-
-			$curl_options[CURLOPT_HTTPHEADER] = [
-				'Proxy-Auth: ' . $this->web_proxy_auth,
-				'Proxy-Target-URL: '. $login_get_url,
-			];
-
-			$url = $this->web_proxy_url;
-		}
-
-		$this->_client->setOptions($curl_options);
-
-		// Go get the csrf token from the login page
-		$urls = array();
-		$urls[] = new \Oara\Curl\Request($url, []);
-		$login_page = $this->_client->get($urls);
-
-		if(strpos($login_page[0], 'g-recaptcha') !== false) {
-			throw new \Exception ('Bol login requires ReCAPTCHA');
-		}
-		// If we have found a token, continue with the login
-		if (\preg_match('#name="csrftoken"(\s*)value="(.*?)"#mi', $login_page[0], $matches) && !empty($matches[2])) {
-
-			$csrf_token = $matches[2];
-
-			$valuesLogin = array(
-				new \Oara\Curl\Parameter('j_username', $credentials['user']),
-				new \Oara\Curl\Parameter('j_password', $credentials['password']),
-				new \Oara\Curl\Parameter('csrftoken', $csrf_token),
-			);
-
-
-			$login_post_url = 'https://login.bol.com/j_spring_security_check';
-
-			if (empty($this->web_proxy_url)) {
-				$url = $login_post_url;
-			} else {
-				$curl_options = $this->_client->getOptions();
-				$curl_options[CURLOPT_HTTPHEADER] = [
-					'Proxy-Auth: ' . $this->web_proxy_auth,
-					'Proxy-Target-URL: '. $login_post_url,
-				];
-				$this->_client->setOptions($curl_options);
-				$url = $this->web_proxy_url;
-			}
-
-			$urls = array();
-			$urls[] = new \Oara\Curl\Request($url, $valuesLogin);
-
-			$this->_client->post($urls);
-
-		} else {
-			throw new \Exception ('Error while retrieving csrf token');
-		}
-
+		$this->getAccessToken($credentials);
 
 	}
 
 	/**
 	 * @return bool
 	 */
-	public function checkConnection()
-	{
-		//If not login properly the construct launch an exception
-		$connection = false;
+	public function checkConnection() {
 
-		$connection_check_url = 'https://partner.bol.com/orders/rapportages';
+		return !empty($this->_credentials['access_token']);
 
-		if (empty($this->web_proxy_url)) {
-			$url = $connection_check_url;
-		} else {
-			$curl_options = $this->_client->getOptions();
-			$curl_options[CURLOPT_HTTPHEADER] = [
-				'Proxy-Auth: ' . $this->web_proxy_auth,
-				'Proxy-Target-URL: '. $connection_check_url,
-			];
-			$this->_client->setOptions($curl_options);
-			$url = $this->web_proxy_url;
-		}
-
-
-		$urls = array();
-		$urls[] = new \Oara\Curl\Request($url, []);
-
-		$exportReport = $this->_client->get($urls);
-
-		if (\preg_match('/app-root/', $exportReport[0], $match)) {
-			$connection = true;
-		}
-		return $connection;
 	}
-
 	/**
 	 * @return array
 	 */
-	public function getNeededCredentials()
-	{
-		$credentials = array();
-
-		$parameter = array();
-		$parameter["description"] = "User Log in";
-		$parameter["required"] = true;
-		$parameter["name"] = "User";
-		$credentials["user"] = $parameter;
-
-		$parameter = array();
-		$parameter["description"] = "Password to Log in";
-		$parameter["required"] = true;
-		$parameter["name"] = "Password";
-		$credentials["password"] = $parameter;
-
-		$parameter = array();
-		$parameter["description"] = "Proxy to connect";
-		$parameter["required"] = true;
-		$parameter["name"] = "Proxy";
-		$credentials["proxy"] = $parameter;
-
-		$parameter = array();
-		$parameter["description"] = "Proxy user/pw";
-		$parameter["required"] = true;
-		$parameter["name"] = "Proxyuser";
-		$credentials["proxyuserpwd"] = $parameter;
-
-		return $credentials;
-	}
-
-	/**
-	 * @return array
-	 */
-	public function getMerchantList()
-	{
+	public function getMerchantList() {
 		$merchants = array();
 
 		$obj = array();
@@ -165,63 +36,78 @@ class Bol extends \Oara\Network
 		return $merchants;
 	}
 
+
+
 	/**
 	 * @param null $merchantList
 	 * @param \DateTime|null $dStartDate
 	 * @param \DateTime|null $dEndDate
 	 * @return array
+	 * @throws \Exception
 	 */
-	public function getTransactionList($merchantList = null, \DateTime $dStartDate = null, \DateTime $dEndDate = null)
-	{
+	public function getTransactionList($merchantList = null, \DateTime $dStartDate = null, \DateTime $dEndDate = null): array {
 
-		$folder = \realpath(\dirname(COOKIES_BASE_DIR)) . '/pdf/';
-		$valuesFromExport = array();
+		$totalTransactions = [];
 
-		$report_url = 'https://partner.bol.com/orders/v1/reports/orders/26742';
+		$days = 3;
 
-		if (empty($this->web_proxy_url)) {
-			$url = $report_url;
+		$start_date_for_api = (clone $dStartDate);
+		$end_date_for_api = (clone $dStartDate)->add(new \DateInterval('P'.$days.'D'));
 
-			$valuesFromExport[] = new \Oara\Curl\Parameter('startDate', $dStartDate->format("d-m-Y"));
-			$valuesFromExport[] = new \Oara\Curl\Parameter('endDate', $dEndDate->format("d-m-Y"));
+		do { // loop over date frames (API times out if we get the sales of a too long period)
 
-		} else {
+			$url = 'https://api.bol.com/marketing/affiliate/reports/v1/order-report?startDate='. \urlencode($start_date_for_api->format("Y-m-d")) . '&endDate=' . \urlencode($end_date_for_api->format("Y-m-d"));
 
-			$valuesFromExport['startDate'] = $dStartDate->format("d-m-Y");
-			$valuesFromExport['endDate'] = $dEndDate->format("d-m-Y");
+			$result = self::callAPI($url);
 
-			$curl_options = $this->_client->getOptions();
-			$curl_options[CURLOPT_HTTPHEADER] = [
-				'Proxy-Auth: ' . $this->web_proxy_auth,
-				'Proxy-Target-URL: '. $report_url . '?' . http_build_query($valuesFromExport),
-			];
-			$this->_client->setOptions($curl_options);
-			$url = $this->web_proxy_url;
+			if (!empty($result['items'])) {
+				foreach ($result['items'] as $item) {
 
-		}
+					$transaction = [];
 
+					$order_date = new \Datetime($item['orderDate']);
 
-		$urls = array();
-		$urls[] = new \Oara\Curl\Request($url, []);
+					// we have logged unique_id's with a postfix of MS serialized datetime value in the old BOL importer, so we want to keep this doing so we can match the old transactions
+					$postfix = $this->formattedPHPToExcel($order_date->format("Y"), $order_date->format("m"), $order_date->format("d"));
 
-		$exportReport = $this->_client->get($urls);
+					$transaction['unique_id'] = $item['orderNumber'] . '_' . $postfix;
 
-		$my_file = $folder . \mt_rand() . '.xlsx';
-		$handle = \fopen($my_file, 'w') or die('Cannot open file:  ' . $my_file);
-		$data = $exportReport[0];
-		\fwrite($handle, $data);
-		\fclose($handle);
+					$transaction['merchantId'] = "1";
+					$transaction['date'] = $order_date->format("Y-m-d 00:00:00");
 
-		$objReader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader('Xlsx');
-		$objReader->setReadDataOnly(true);
-		$objPHPExcel = $objReader->load($my_file);
+					$transaction['custom_id'] = $item['subId'] ?? '';
 
-		$totalTransactions = self::getTransationsFromExcel($objPHPExcel);
+					$transaction['amount'] = $item['priceExcludingVat'];
+					$transaction['commission'] = $item['commission'];
 
-		unlink($my_file);
+					if ($item['status'] == 'Geaccepteerd') {
+						$transaction['status'] = \Oara\Utilities::STATUS_CONFIRMED;
+					} else if ($item['status'] == 'Open') {
+						$transaction['status'] = \Oara\Utilities::STATUS_PENDING;
+					} else if ($item['status'] == 'geweigerd: klik te oud' || $item['status'] == 'Geweigerd') {
+						$transaction['status'] = \Oara\Utilities::STATUS_DECLINED;
+					} else {
+						throw new \Exception("new status " . $item['status']);
+					}
+
+					$totalTransactions[] = $transaction;
+				}
+			}
+
+			$get_more_dates = $end_date_for_api < $dEndDate;
+
+			$start_date_for_api->add(new \DateInterval('P'.($days).'D'));
+			$end_date_for_api->add(new \DateInterval('P'.($days).'D'));
+
+		} while ($get_more_dates);
+
+		$totalTransactions = self::mergeProductsFromOneOrder($totalTransactions);
 
 		return $totalTransactions;
+
 	}
+
+
 
 	public static function getTransationsFromExcel($objPHPExcel) {
 		$totalTransactions = [];
@@ -268,7 +154,7 @@ class Bol extends \Oara\Network
 	 * @param $transactionList
 	 * @return array
 	 */
-	private static function mergeProductsFromOneOrder($transactionList) {
+	private static function mergeProductsFromOneOrder(array $transactionList) {
 		$unique_transactions = [];
 		$transactions_per_unique_id = [];
 
@@ -322,5 +208,97 @@ class Bol extends \Oara\Network
 
 	}
 
+
+
+
+	private function getAccessToken(array $credentials) {
+
+		$curl = curl_init('https://login.bol.com/token?grant_type=client_credentials');
+
+		curl_setopt($curl, CURLOPT_POST, true);
+		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+
+		curl_setopt($curl, CURLOPT_HTTPHEADER, [
+			'Content-Type: application/json',
+			'Authorization: Basic ' . base64_encode($credentials['client_id'].':'.$credentials['client_secret']),
+
+		]);
+
+		$response = curl_exec($curl);
+		$token = json_decode($response);
+
+		if (!empty($token->access_token)) {
+			$this->_credentials['access_token'] = $token->access_token;
+		}
+
+	}
+
+
+	private function callAPI(string $url, string $type = 'GET', array $data = []) {
+
+		$curl = curl_init($url);
+
+		curl_setopt($curl, CURLOPT_HTTPHEADER, [
+			'Content-Type: application/json',
+			'Authorization: Bearer ' . $this->_credentials['access_token'],
+		]);
+
+		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+
+		$response = curl_exec($curl);
+
+		$error = curl_error($curl);
+		if (empty($error) === false) {
+			var_dump($error);
+			die;
+		}
+
+		curl_close($curl);
+
+		return json_decode($response, true);
+	}
+
+
+
+	/**
+	 * formattedPHPToExcel.
+	 *
+	 * @param int $year
+	 * @param int $month
+	 * @param int $day
+	 * @param int $hours
+	 * @param int $minutes
+	 * @param int $seconds
+	 *
+	 * @return float Excel date/time value
+	 */
+	private static function formattedPHPToExcel($year, $month, $day, $hours = 0, $minutes = 0, $seconds = 0) {
+		//
+		//    Fudge factor for the erroneous fact that the year 1900 is treated as a Leap Year in MS Excel
+		//    This affects every date following 28th February 1900
+		//
+		$excel1900isLeapYear = true;
+		if (($year == 1900) && ($month <= 2)) {
+			$excel1900isLeapYear = false;
+		}
+		$myexcelBaseDate = 2415020;
+
+		//    Julian base date Adjustment
+		if ($month > 2) {
+			$month -= 3;
+		} else {
+			$month += 9;
+			--$year;
+		}
+
+		//    Calculate the Julian Date, then subtract the Excel base date (JD 2415020 = 31-Dec-1899 Giving Excel Date of 0)
+		$century = (int) substr((string) $year, 0, 2);
+		$decade = (int) substr((string) $year, 2, 2);
+		$excelDate = floor((146097 * $century) / 4) + floor((1461 * $decade) / 4) + floor((153 * $month + 2) / 5) + $day + 1721119 - $myexcelBaseDate + $excel1900isLeapYear;
+
+		$excelTime = (($hours * 3600) + ($minutes * 60) + $seconds) / 86400;
+
+		return (float) $excelDate + $excelTime;
+	}
 
 }
