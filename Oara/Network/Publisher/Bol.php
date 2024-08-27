@@ -52,7 +52,7 @@ class Bol extends \Oara\Network {
 		$days = 3;
 
 		$start_date_for_api = (clone $dStartDate);
-		$end_date_for_api = (clone $dStartDate)->add(new \DateInterval('P'.$days.'D'));
+		$end_date_for_api = (clone $dStartDate)->add(new \DateInterval('P'.($days-1).'D')); // $days-1 because the end-date is inclusive and we are getting double transactions otherwise
 
 		do { // loop over date frames (API times out if we get the sales of a too long period)
 
