@@ -85,6 +85,15 @@ class Rakuten extends \Oara\Network {
 			}
 		}
 
+		// if there are no sales in the dateperiod, we want to return some dummy data to avoid an error because the merchants are empty
+		if (empty($merchants) && !empty($csv_report)) {
+			$obj = Array();
+			$obj['cid'] = '35718';
+			$obj['name'] = 'ASOS (UK)';
+			$merchants[] = $obj;
+		}
+
+
 		return $merchants;
 
 	}
