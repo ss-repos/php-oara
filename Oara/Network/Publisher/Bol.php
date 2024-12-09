@@ -3,12 +3,12 @@ namespace Oara\Network\Publisher;
 
 class Bol extends \Oara\Network {
 
-	private $_credentials = null;
+	private array $_credentials = [];
 
 	/**
-	 * @param $credentials
+	 * @param array $credentials
 	 */
-	public function login(array $credentials)	{
+	public function login(array $credentials): void {
 
 		$this->getAccessToken($credentials);
 
@@ -17,7 +17,7 @@ class Bol extends \Oara\Network {
 	/**
 	 * @return bool
 	 */
-	public function checkConnection() {
+	public function checkConnection(): bool {
 
 		return !empty($this->_credentials['access_token']);
 
@@ -25,7 +25,7 @@ class Bol extends \Oara\Network {
 	/**
 	 * @return array
 	 */
-	public function getMerchantList() {
+	public function getMerchantList(): array {
 		$merchants = array();
 
 		$obj = array();
@@ -56,28 +56,27 @@ class Bol extends \Oara\Network {
 
 		do { // loop over date frames (API times out if we get the sales of a too long period)
 
-			$url = 'https://api.bol.com/marketing/affiliate/reports/v1/order-report?startDate='. \urlencode($start_date_for_api->format("Y-m-d")) . '&endDate=' . \urlencode($end_date_for_api->format("Y-m-d"));
+			$url = 'https://api.bol.com/marketing/affiliate/reports/v2/order-report?startDate='. \urlencode($start_date_for_api->format("Y-m-d")) . '&endDate=' . \urlencode($end_date_for_api->format("Y-m-d"));
 
 			$result = self::callAPI($url);
 
 			if (!empty($result['items'])) {
 				foreach ($result['items'] as $item) {
-
 					$transaction = [];
 
-					$order_date = new \Datetime($item['orderDate']);
+					$order_datetime = new \Datetime($item['orderDateTime']); // is already in UTC
 
 					// we have logged unique_id's with a postfix of MS serialized datetime value in the old BOL importer, so we want to keep this doing so we can match the old transactions
-					$postfix = $this->formattedPHPToExcel($order_date->format("Y"), $order_date->format("m"), $order_date->format("d"));
+					$postfix = $this->formattedPHPToExcel($order_datetime->format("Y"), $order_datetime->format("m"), $order_datetime->format("d"));
 
-					$transaction['unique_id'] = $item['orderNumber'] . '_' . $postfix;
+					$transaction['unique_id'] = $item['orderId'] . '_' . $postfix;
 
 					$transaction['merchantId'] = "1";
-					$transaction['date'] = $order_date->format("Y-m-d 00:00:00");
+					$transaction['date'] = $order_datetime->format("Y-m-d H:i:s");
 
 					$transaction['custom_id'] = $item['subId'] ?? '';
 
-					$transaction['amount'] = $item['priceExcludingVat'];
+					$transaction['amount'] = $item['priceExclVat'];
 					$transaction['commission'] = $item['commission'];
 
 					if ($item['status'] == 'Geaccepteerd') {
@@ -94,6 +93,7 @@ class Bol extends \Oara\Network {
 				}
 			}
 
+
 			$get_more_dates = $end_date_for_api < $dEndDate;
 
 			$start_date_for_api->add(new \DateInterval('P'.($days).'D'));
@@ -107,45 +107,6 @@ class Bol extends \Oara\Network {
 
 	}
 
-
-
-	public static function getTransationsFromExcel($objPHPExcel) {
-		$totalTransactions = [];
-
-		$objWorksheet = $objPHPExcel->getActiveSheet();
-		$highestRow = $objWorksheet->getHighestRow();
-
-		for ($row = 2; $row <= $highestRow; ++$row) {
-
-			$transaction = Array();
-			$transaction['unique_id'] = $objWorksheet->getCellByColumnAndRow(1, $row)->getValue() . "_" . $objWorksheet->getCellByColumnAndRow(2, $row)->getValue();
-			$transaction['merchantId'] = "1";
-			$transactionDate = $objWorksheet->getCellByColumnAndRow(2, $row)->getValue();
-			$transaction['date'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($transactionDate)->format("Y-m-d 00:00:00");
-
-			$transaction['custom_id'] = $objWorksheet->getCellByColumnAndRow(7, $row)->getValue();
-			$status = $objWorksheet->getCellByColumnAndRow(13, $row)->getValue();
-			if ($status == 'Geaccepteerd') {
-				$transaction['status'] = \Oara\Utilities::STATUS_CONFIRMED;
-			} else
-				if ($status == 'Open') {
-					$transaction['status'] = \Oara\Utilities::STATUS_PENDING;
-				} else
-					if ($status == 'geweigerd: klik te oud' || $status == 'Geweigerd') {
-						$transaction['status'] = \Oara\Utilities::STATUS_DECLINED;
-					} else {
-						throw new \Exception("new status " . $status);
-					}
-			$transaction['amount'] = \Oara\Utilities::parseDouble(round($objWorksheet->getCellByColumnAndRow(10, $row)->getValue(), 2)); // price without VAT
-			$transaction['commission'] = \Oara\Utilities::parseDouble(round($objWorksheet->getCellByColumnAndRow(11, $row)->getValue(), 2));
-			$totalTransactions[] = $transaction;
-
-		}
-
-		$totalTransactions = self::mergeProductsFromOneOrder($totalTransactions);
-
-		return $totalTransactions;
-	}
 
 	/**
 	 * If an order contains multiple products, every product is in a new row with the same unique_id.
@@ -211,7 +172,7 @@ class Bol extends \Oara\Network {
 
 
 
-	private function getAccessToken(array $credentials) {
+	private function getAccessToken(array $credentials): void {
 
 		$curl = curl_init('https://login.bol.com/token?grant_type=client_credentials');
 
@@ -272,7 +233,7 @@ class Bol extends \Oara\Network {
 	 *
 	 * @return float Excel date/time value
 	 */
-	private static function formattedPHPToExcel($year, $month, $day, $hours = 0, $minutes = 0, $seconds = 0) {
+	private static function formattedPHPToExcel($year, $month, $day, $hours = 0, $minutes = 0, $seconds = 0): float {
 		//
 		//    Fudge factor for the erroneous fact that the year 1900 is treated as a Leap Year in MS Excel
 		//    This affects every date following 28th February 1900

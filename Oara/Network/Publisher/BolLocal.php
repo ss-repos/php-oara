@@ -57,6 +57,7 @@ class BolLocal extends \Oara\Network
 	 * @param \DateTime|null $dStartDate
 	 * @param \DateTime|null $dEndDate
 	 * @return array
+	 * @throws \Exception
 	 */
 	public function getTransactionList($merchantList = null, \DateTime $dStartDate = null, \DateTime $dEndDate = null): array {
 		$totalTransactions = [];
@@ -73,9 +74,50 @@ class BolLocal extends \Oara\Network
 		$objReader->setReadDataOnly(true);
 		$objPHPExcel = $objReader->load($filename);
 
-		$totalTransactions = Bol::getTransationsFromExcel($objPHPExcel);
+		$totalTransactions = self::getTransactionsFromExcel($objPHPExcel);
 
 		return $totalTransactions;
 	}
+
+
+
+
+	private static function getTransactionsFromExcel($objPHPExcel): array {
+		$totalTransactions = [];
+
+		$objWorksheet = $objPHPExcel->getActiveSheet();
+		$highestRow = $objWorksheet->getHighestRow();
+
+		for ($row = 2; $row <= $highestRow; ++$row) {
+
+			$transaction = Array();
+			$transaction['unique_id'] = $objWorksheet->getCellByColumnAndRow(1, $row)->getValue() . "_" . $objWorksheet->getCellByColumnAndRow(2, $row)->getValue();
+			$transaction['merchantId'] = "1";
+			$transactionDate = $objWorksheet->getCellByColumnAndRow(2, $row)->getValue();
+			$transaction['date'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($transactionDate)->format("Y-m-d 00:00:00");
+
+			$transaction['custom_id'] = $objWorksheet->getCellByColumnAndRow(7, $row)->getValue();
+			$status = $objWorksheet->getCellByColumnAndRow(13, $row)->getValue();
+			if ($status == 'Geaccepteerd') {
+				$transaction['status'] = \Oara\Utilities::STATUS_CONFIRMED;
+			} else
+				if ($status == 'Open') {
+					$transaction['status'] = \Oara\Utilities::STATUS_PENDING;
+				} else
+					if ($status == 'geweigerd: klik te oud' || $status == 'Geweigerd') {
+						$transaction['status'] = \Oara\Utilities::STATUS_DECLINED;
+					} else {
+						throw new \Exception("new status " . $status);
+					}
+			$transaction['amount'] = \Oara\Utilities::parseDouble(round($objWorksheet->getCellByColumnAndRow(10, $row)->getValue(), 2)); // price without VAT
+			$transaction['commission'] = \Oara\Utilities::parseDouble(round($objWorksheet->getCellByColumnAndRow(11, $row)->getValue(), 2));
+			$totalTransactions[] = $transaction;
+
+		}
+
+		return Bol::mergeProductsFromOneOrder($totalTransactions);
+	}
+
+
 
 }
