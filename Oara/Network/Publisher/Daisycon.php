@@ -59,7 +59,7 @@ class Daisycon extends \Oara\Network {
 		$merchantIdList = \Oara\Utilities::getMerchantIdMapFromMerchantList($merchantList);
 
 		$days = 5; // API max number is days is 31
-		$page_size = 500; // API max page size if 500
+		$page_size = 1000; // API max page size is 1000
 
 		foreach ($this->_credentials['media_ids'] as $media_id) {
 
