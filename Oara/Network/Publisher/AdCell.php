@@ -23,7 +23,7 @@ class AdCell extends \Oara\Network
 
 		$this->api_password = $credentials['apipassword'];
 		$this->username = $credentials['username'];
-		$result = json_decode(file_get_contents('https://www.adcell.de/api/v2/user/getToken?userName='.$this->username.'&password='.$this->api_password.''));
+		$result = json_decode(file_get_contents('https://api.adcell.org/api/v2/user/getToken?userName='.$this->username.'&password='.$this->api_password.''));
 
 		if (!empty($result->data->token)) {
 			$this->token = $result->data->token;
@@ -69,7 +69,7 @@ class AdCell extends \Oara\Network
 	public function getMerchantList() {
 		$merchants = array();
 
-		$url = 'https://www.adcell.de/api/v2/affiliate/program/export?affiliateStatus=accepted';
+		$url = 'https://api.adcell.org/api/v2/affiliate/program/export?affiliateStatus=accepted';
 
 		$response = self::apiCall($url);
 
@@ -99,7 +99,7 @@ class AdCell extends \Oara\Network
 
 		$dEndDate->add(new \DateInterval('P1D')); // add one day so we also get results of today
 
-		$url = 'https://www.adcell.de/api/v2/affiliate/statistic/byCommission?rows=1000&startDate='.$dStartDate->format("Y-m-d").'&endDate='.$dEndDate->format("Y-m-d");
+		$url = 'https://api.adcell.org/api/v2/affiliate/statistic/byCommission?rows=1000&startDate='.$dStartDate->format("Y-m-d").'&endDate='.$dEndDate->format("Y-m-d");
 		$response = self::apiCall($url);
 		if (!empty($response->data->items)) {
 
