@@ -65,23 +65,24 @@ $response = httpPost(
 	]
 );
 
+$tokens = json_decode($response);
+
 if (true === empty($outputFile))
 {
 	echo 'Here are your access tokens, save them somewhere safe', PHP_EOL,
-	 '{';
 
 	$first = true;
-	foreach($response as $key => $value)
+	foreach($tokens as $key => $value)
 	{
-		echo ($first ? '' : ',' . PHP_EOL),
+		echo ($first ? '' : ',' . PHP_EOL . PHP_EOL),
 			"\t" , '"', $key, '": ', json_encode($value);
 		$first = false;
 	}
-	echo PHP_EOL, '}', PHP_EOL, PHP_EOL;
+	echo PHP_EOL, PHP_EOL;
 	exit;
 }
 
-file_put_contents($outputFile, json_encode($response));
+file_put_contents($outputFile, json_encode($tokens));
 echo "Tokens written to output file: {$outputFile}\n\n";
 exit;
 
