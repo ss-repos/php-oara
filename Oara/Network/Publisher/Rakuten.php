@@ -52,7 +52,7 @@ class Rakuten extends \Oara\Network {
 	 */
 	public function getMerchantList(): array {
 
-		$url = 'https://ran-reporting.rakutenmarketing.com/en/reports/api-orders-report/filters?date_range=last-7-days&include_summary=N&network=9&tz=GMT&date_type=transaction&token=' . $this->_credentials['token'];
+		$url = 'https://ran-reporting.rakutenmarketing.com/en/reports/api-orders-report/filters?date_range=last-7-days&include_summary=N&tz=GMT&date_type=transaction&token=' . $this->_credentials['token'];
 
 		if (!empty($this->_credentials['network'])) {
 			$url .= '&network=' . $this->_credentials['network'];
