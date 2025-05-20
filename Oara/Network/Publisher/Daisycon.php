@@ -129,7 +129,7 @@ class Daisycon extends \Oara\Network {
 	}
 
 
-	private function refreshTokens() {
+	private function refreshTokens($count = 1) {
 
 		// retrieve refresh token from valuestore
 		if(empty($refresh_token = $this->_credentials['valuestore_location']::retrieve('daisycon_refresh_token'))) {
@@ -152,9 +152,14 @@ class Daisycon extends \Oara\Network {
 
 		if (!empty($tokens->refresh_token)) { // store refresh token in valuestore for next time
 			$this->_credentials['valuestore_location']::store('daisycon_refresh_token', $tokens->refresh_token);
-		}
-		if (!empty($tokens->access_token)) { // use acces token this run
-			$this->_credentials['access_token'] = $tokens->access_token;
+
+			if (!empty($tokens->access_token)) { // use acces token for this run
+				$this->_credentials['access_token'] = $tokens->access_token;
+			}
+
+		} else if ($count <= 3) {
+			sleep($count * 5);
+			$this->refreshTokens($count + 1);
 		}
 
 	}
