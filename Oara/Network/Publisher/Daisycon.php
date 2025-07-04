@@ -68,7 +68,7 @@ class Daisycon extends \Oara\Network {
 
 			do { // loop over date frames (API max result set size is 10000, so we cannot use the date range with a high page number for bigger result set and therefore we have to split up)
 
-				$api_url = 'https://services.daisycon.com/publishers/' . $this->_credentials['publisher_id'] . '/transactions?currency_code=EUR&media_id='.$media_id.'&per_page='.$page_size.'&start='. \urlencode($start_date_for_api->format("Y-m-d H:i:s")) . '&end=' . \urlencode($end_date_for_api->format("Y-m-d H:i:s"));
+				$api_url = 'https://services.daisycon.com/publishers/' . $this->_credentials['publisher_id'] . '/transactions?currency_code=EUR&media_id='.$media_id.'&per_page='.$page_size.'&start='. \urlencode($start_date_for_api->format("Y-m-d")) . '&end=' . \urlencode($end_date_for_api->format("Y-m-d"));
 
 				$page = 1;
 				$finish = false;
@@ -78,6 +78,11 @@ class Daisycon extends \Oara\Network {
 
 					$response = $this->callAPI($url, 'GET');
 					$transactionList = json_decode($response, true);
+
+					if (!empty($transactionList['error'])) {
+						throw new \Exception('Daisycon error: ' . $transactionList['error']);
+					}
+
 					if (!empty($transactionList)) {
 						foreach ($transactionList as $transaction) {
 
