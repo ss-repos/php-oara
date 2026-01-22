@@ -13,18 +13,6 @@ class Amazon extends \Oara\Network {
 	public function getNeededCredentials() {
 		$credentials = array();
 
-		$parameter = array();
-		$parameter["description"] = "User for the feed https://assoc-datafeeds-eu.amazon.com/datafeed/listReports";
-		$parameter["required"] = true;
-		$parameter["name"] = "User";
-		$credentials["user"] = $parameter;
-
-		$parameter = array();
-		$parameter["description"] = "Password for the feed https://assoc-datafeeds-eu.amazon.com/datafeed/listReports";
-		$parameter["required"] = true;
-		$parameter["name"] = "Password";
-		$credentials["password"] = $parameter;
-
 		return $credentials;
 	}
 
@@ -33,24 +21,14 @@ class Amazon extends \Oara\Network {
 	 * Check the connection
 	 */
 	public function checkConnection() {
-		// If not login properly the construct launch an exception
-		$connection = true;
+		$connection = false;
 
-		$url = "https://assoc-datafeeds-eu.amazon.com/datafeed/listReports";
-		$curl = \curl_init();
-		\curl_setopt($curl, CURLOPT_URL, $url);
-		\curl_setopt($curl, CURLOPT_USERPWD, $this->_credentials["user"] . ':' . $this->_credentials["password"]);
-		\curl_setopt($curl, CURLOPT_HEADER, false);
-		\curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-		\curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
-		\curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-		\curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
-		\curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
-		\curl_setopt($curl, CURLOPT_BINARYTRANSFER, true);
-		$output = \curl_exec($curl);
-		if (\preg_match("/Error/", $output)) {
-			$connection = false;
+		$creators_api_class = $this->_credentials['creators_api_client'] ?? null;
+		$creators_api_country = $this->_credentials['creators_api_country'] ?? null;
+		if($creators_api_class && class_exists($creators_api_class) && !empty($creators_api_country)) {
+			$connection = true;
 		}
+
 		return $connection;
 	}
 
@@ -75,6 +53,9 @@ class Amazon extends \Oara\Network {
 	 * @see library/Oara/Network/Oara_Network_Publisher_Interface#getTransactionList($aMerchantIds, $dStartDate, $dEndDate, $sTransactionStatus)
 	 */
 	public function getTransactionList($merchantList = null, \DateTime $dStartDate = null, \DateTime $dEndDate = null) {
+		// Init CreatorsAPI
+		$creators_api_class = $this->_credentials['creators_api_client'];
+		$api_client = new $creators_api_class($this->_credentials['creators_api_country']);
 
 		$totalTransactions = [];
 		$amountDays = $dStartDate->diff($dEndDate)->days;
@@ -82,25 +63,10 @@ class Amazon extends \Oara\Network {
 		for ($j = 0; $j <= $amountDays; $j++) {
 			$date = $auxDate->format("Ymd");
 
-			$url = "https://assoc-datafeeds-eu.amazon.com/datafeed/getReport?filename={$this->_credentials["user"]}-earnings-report-$date.tsv.gz";
-			$curl = \curl_init();
-			\curl_setopt($curl, CURLOPT_URL, $url);
-			\curl_setopt($curl, CURLOPT_USERPWD, $this->_credentials["user"] . ':' . $this->_credentials["password"]);
-			\curl_setopt($curl, CURLOPT_HEADER, false);
-			\curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-			\curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
-			\curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-			\curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
-			\curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
-			\curl_setopt($curl, CURLOPT_BINARYTRANSFER, true);
-			$output = \curl_exec($curl);
-			if ($output) {
-				$filename = \realpath(\dirname(COOKIES_BASE_DIR)) . "/pdf/{$this->_credentials["user"]}-earnings-report-$date.tsv.gz";
-				\file_put_contents($filename, $output);
-				$zd = \gzopen($filename, "r");
-				$contents = \gzread($zd, 1000000);
-				\gzclose($zd);
+			$filename = "{$this->_credentials['store_id']}-earnings-report-$date.tsv.gz";
 
+			$contents = $api_client->getReportContents($filename);
+			if ($contents) {
 				$exportData = \explode("\n", $contents);
 
 				$num = \count($exportData);
@@ -155,12 +121,9 @@ class Amazon extends \Oara\Network {
 
 
 				}
-				\unlink($filename);
-
 			}
 			$auxDate->add(new \DateInterval('P1D'));
 		}
-
 		return $totalTransactions;
 	}
 }
