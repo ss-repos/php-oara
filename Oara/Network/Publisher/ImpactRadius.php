@@ -155,10 +155,15 @@ class ImpactRadius extends \Oara\Network
 			//New Interface
 			$uri = "https://" . $account['accountSid'] . ":" . $account['authToken'] . "@api.impactradius.com/2010-09-01/Mediapartners/" . $account['accountSid'] . "/Actions?ActionDateStart=" . $dStartDate->format('Y-m-d\TH:i:s') . "-00:00&ActionDateEnd=" . $dEndDate->format('Y-m-d\TH:i:s') . "-00:00";
 			$res = \simplexml_load_string(self::call($uri));
-			if ($res) {
-
-				$currentPage = (int)$res->Actions->attributes()->page;
-				$pageNumber = (int)$res->Actions->attributes()->numpages;
+			if (!$res || !isset($res->Actions)) {
+				// Unexpected response
+				// error_log('Invalid Impact API response: ' . $xmlString);
+				continue;
+			}
+			$attributes = $res->Actions->attributes();
+			if ($attributes) {
+				$currentPage = (int)$attributes->page;
+				$pageNumber = (int)$attributes->numpages;
 				while ($currentPage <= $pageNumber) {
 
 					foreach ($res->Actions->Action as $action) {
